@@ -3,6 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: outdoor_eshop_db
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}    
@@ -12,7 +14,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db:/docker-entrypoint-initdb.d
+      - ./sql:/docker-entrypoint-initdb.d
 
   adminer:
     image: adminer:latest
