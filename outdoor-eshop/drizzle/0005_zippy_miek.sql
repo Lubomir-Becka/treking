@@ -1,0 +1,2 @@
+ALTER TABLE "products" DROP CONSTRAINT "products_audience_check";--> statement-breakpoint
+ALTER TABLE "products" ADD CONSTRAINT "products_audience_check" CHECK ((audience)::text = ANY ((ARRAY['men'::character varying, 'women'::character varying, 'unisex'::character varying])::text[]));
