@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeAdmin } from "@/shared/composition/server";
-import { isSameOrigin } from "./sameOrigin";
+import { originError } from "./originError";
 
 export async function adminAccessError(request: Request, mutation = false) {
   const access = await authorizeAdmin();
@@ -10,8 +10,5 @@ export async function adminAccessError(request: Request, mutation = false) {
   if (access.status === "forbidden") {
     return NextResponse.json({ error: "Prístup je povolený iba administrátorom." }, { status: 403 });
   }
-  if (mutation && !isSameOrigin(request)) {
-    return NextResponse.json({ error: "Neplatný pôvod požiadavky." }, { status: 403 });
-  }
-  return null;
+  return mutation ? originError(request) : null;
 }

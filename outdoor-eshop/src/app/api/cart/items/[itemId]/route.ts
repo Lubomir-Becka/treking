@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cartUseCases } from "@/features/cart/composition/server";
 import { resolveCartActor } from "@/shared/composition/server";
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
+import { originError } from "@/shared/server/http/originError";
 
 type Context = { params: Promise<{ itemId: string }> };
 
@@ -11,6 +12,8 @@ async function itemIdFrom(context: Context) {
 }
 
 export async function PATCH(request: Request, context: Context) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     const parsedBody = await readJsonBody(request);
     if (
@@ -47,7 +50,9 @@ export async function PATCH(request: Request, context: Context) {
   }
 }
 
-export async function DELETE(_request: Request, context: Context) {
+export async function DELETE(request: Request, context: Context) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     return NextResponse.json({
       data: await cartUseCases.removeItem(

@@ -48,11 +48,25 @@ export async function fetchProducts(
   signal: AbortSignal,
   categorySlug?: string,
   audience?: "men" | "women" | "unisex",
+  options?: {
+    offset: number;
+    limit: number;
+    maxPrice?: string;
+    stockOnly?: boolean;
+    sort?: "featured" | "price-asc" | "price-desc";
+  },
 ): Promise<CatalogProductDto[]> {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (categorySlug) params.set("category", categorySlug);
   if (audience) params.set("audience", audience);
+  if (options) {
+    params.set("offset", String(options.offset));
+    params.set("limit", String(options.limit));
+    if (options.maxPrice !== undefined) params.set("maxPrice", options.maxPrice);
+    if (options.stockOnly) params.set("stockOnly", "true");
+    if (options.sort) params.set("sort", options.sort);
+  }
 
   const response = await fetch(`/api/products?${params.toString()}`, { signal });
   if (!response.ok) {

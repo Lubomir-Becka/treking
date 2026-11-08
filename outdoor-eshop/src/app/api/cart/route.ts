@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { resolveCartActor } from "@/shared/composition/server";
 import { cartUseCases } from "@/features/cart/composition/server";
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
+import { originError } from "@/shared/server/http/originError";
 
 export async function GET() {
   try {
@@ -18,6 +19,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     const parsedBody = await readJsonBody(request);
     if (

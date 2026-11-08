@@ -10,6 +10,7 @@ export type ProductImage = {
   url: string;
   alt: string;
   order: number;
+  isPrimary: boolean;
 };
 
 export type ProductColor = {
@@ -57,6 +58,10 @@ export type ProductSearchCriteria = {
   limit?: number;
   colorIds?: number[];
   slugs?: string[];
+  offset?: number;
+  maxPrice?: string;
+  stockOnly?: boolean;
+  sort?: "featured" | "price-asc" | "price-desc";
 };
 
 export type TargetAudience = "men" | "women" | "unisex";

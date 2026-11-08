@@ -40,6 +40,7 @@ export async function findProductDetailQuery(slug: string): Promise<ProductDetai
         imageUrl: productImages.imageUrl,
         imageAlt: productImages.altText,
         imageOrder: productImages.displayOrder,
+        imagePrimary: productImages.isPrimary,
         variantId: productVariants.id,
         sku: productVariants.sku,
         size: productVariants.size,
@@ -76,6 +77,7 @@ export async function findProductDetailQuery(slug: string): Promise<ProductDetai
         url: row.imageUrl,
         alt: row.imageAlt ?? product.name,
         order: row.imageOrder ?? 0,
+        isPrimary: row.imagePrimary === true,
       });
     }
 

@@ -313,18 +313,31 @@
     box-shadow: 0 0 0 2px #1b382b;
   }
   .catalogPriceRange {
+    color: #66736d;
+    font-size: 11px;
     padding-top: 16px;
   }
   .catalogPriceRange input {
-    accent-color: #1b382b;
+    background: #fff;
+    border: 1px solid #bec9c3;
+    margin-top: 8px;
+    padding: 8px;
     width: 100%;
   }
-  .catalogPriceRange div {
-    color: #84908a;
-    display: flex;
-    font-size: 10px;
-    justify-content: space-between;
+  .catalogPriceRange p {
+    color: #9c2e2e;
+    line-height: 1.4;
   }
+  .catalogMore {
+    background: #1b382b;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    grid-column: 1 / -1;
+    justify-self: center;
+    padding: 12px 24px;
+  }
+  .catalogMore:disabled { cursor: wait; opacity: .6; }
   .catalogStock {
     border-top: 1px solid #d9dad7;
     padding: 18px 0;

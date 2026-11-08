@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CustomerFavoriteButton } from "@/app/_components/customer/client";
+import { fetchProducts } from "@/features/products/composition/client";
 import styles from "./catalog.module.css";
 import type { CatalogProductDto } from "@/features/products/contracts/products";
 
@@ -14,7 +15,6 @@ export type CatalogCategoryLink = {
 };
 
 type Props = {
-  products: CatalogProductDto[];
   title: string;
   breadcrumb: Array<{ label: string; href?: string }>;
   query?: string;
@@ -22,10 +22,10 @@ type Props = {
   showRecommendations?: boolean;
   audience?: "men" | "women" | "unisex";
   categories?: CatalogCategoryLink[];
-  isLoading?: boolean;
-  loadError?: string | null;
-  onRetry?: () => void;
+  categorySlug?: string;
 };
+
+const PAGE_SIZE = 24;
 
 function ProductCard({ product }: { product: CatalogProductDto }) {
   const formattedPrice =
@@ -73,8 +73,8 @@ function ProductCard({ product }: { product: CatalogProductDto }) {
           <p>{product.description ?? "Technická výbava pre náročné podmienky."}</p>
 
           <div className={styles.catalogProductFooter}>
-            <strong>{formattedPrice}</strong>
-            <span>{product.stock ?? 0} ks skladom</span>
+            <strong>{product.price === null ? formattedPrice : `od ${formattedPrice}`}</strong>
+            <span>{(product.stock ?? 0) > 0 ? "Skladom" : "Nedostupné"}</span>
           </div>
         </div>
       </Link>
@@ -126,7 +126,6 @@ function CategoryGrid({
 }
 
 export function CatalogListingClient({
-  products,
   title,
   breadcrumb,
   query = "",
@@ -134,31 +133,52 @@ export function CatalogListingClient({
   showRecommendations = false,
   audience,
   categories = [],
-  isLoading = false,
-  loadError = null,
-  onRetry,
+  categorySlug,
 }: Props) {
-  const [maxPrice, setMaxPrice] = useState(850);
+  const [maxPrice, setMaxPrice] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
   const [sort, setSort] = useState<"featured" | "price-asc" | "price-desc">("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeFilterCount = Number(maxPrice < 850) + Number(stockOnly);
+  const [products, setProducts] = useState<CatalogProductDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [page, setPage] = useState({ key: "", offset: 0 });
+  const normalizedPrice = maxPrice.trim().replace(",", ".");
+  const priceValid = normalizedPrice === "" || /^\d{1,8}(?:\.\d{1,2})?$/.test(normalizedPrice);
+  const filterKey = JSON.stringify([query, audience, categorySlug, normalizedPrice, stockOnly, sort]);
+  const offset = page.key === filterKey ? page.offset : 0;
+  const activeFilterCount = Number(normalizedPrice !== "") + Number(stockOnly);
 
-  const visibleProducts = useMemo(() => {
-    const result = products.filter((product) => {
-      const price = product.price === null ? Infinity : Number(product.price);
-      const matchesPrice = price <= maxPrice;
-      const matchesStock = !stockOnly || (product.stock ?? 0) > 0;
-
-      return matchesPrice && matchesStock;
+  useEffect(() => {
+    if (page.key !== filterKey) {
+      setPage({ key: filterKey, offset: 0 });
+      return;
+    }
+    if (!priceValid) return;
+    const controller = new AbortController();
+    setIsLoading(true);
+    setLoadError(null);
+    fetchProducts(query, controller.signal, categorySlug, audience, {
+      offset,
+      limit: PAGE_SIZE + 1,
+      ...(normalizedPrice ? { maxPrice: normalizedPrice } : {}),
+      stockOnly,
+      sort,
+    }).then((result) => {
+      const currentPage = result.slice(0, PAGE_SIZE);
+      setProducts((current) => offset === 0 ? currentPage : [...current, ...currentPage]);
+      setHasMore(result.length > PAGE_SIZE);
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted) {
+        setLoadError(error instanceof Error ? error.message : "Nepodarilo sa načítať katalóg produktov.");
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setIsLoading(false);
     });
-
-    if (sort === "featured") return result;
-    return result.sort((a, b) => {
-      if (sort === "price-asc") return Number(a.price ?? Infinity) - Number(b.price ?? Infinity);
-      return Number(b.price ?? -Infinity) - Number(a.price ?? -Infinity);
-    });
-  }, [maxPrice, products, sort, stockOnly]);
+    return () => controller.abort();
+  }, [query, categorySlug, audience, offset, normalizedPrice, priceValid, stockOnly, sort, retryCount, page.key, filterKey]);
 
   return (
     <main className={`site-shell ${styles.catalogPage}`}>
@@ -249,17 +269,22 @@ export function CatalogListingClient({
                 Cena<span>+</span>
               </summary>
               <div className={styles.catalogPriceRange}>
+                <label htmlFor="catalog-max-price">Maximálna cena (€)</label>
                 <input
-                  type="range"
-                  min="150"
-                  max="850"
+                  id="catalog-max-price"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Bez obmedzenia"
                   value={maxPrice}
-                  onChange={(event) => setMaxPrice(Number(event.target.value))}
+                  onChange={(event) => setMaxPrice(event.target.value)}
+                  aria-invalid={!priceValid}
+                  aria-describedby={!priceValid ? "catalog-price-error" : undefined}
                 />
-                <div>
-                  <span>150 €</span>
-                  <span>{maxPrice} €</span>
-                </div>
+                {!priceValid && (
+                  <p id="catalog-price-error" role="alert">
+                    Zadajte nezápornú cenu s najviac dvomi desatinnými miestami.
+                  </p>
+                )}
               </div>
             </details>
 
@@ -277,25 +302,23 @@ export function CatalogListingClient({
         <div className={styles.catalogGrid}>
           <div className={styles.catalogGridHeading}>
             <strong>{query ? `Výsledky „${query}“` : `Výsledky ${title}`}</strong>
-            <span>{visibleProducts.length} variantov</span>
+            <span>{products.length} načítaných variantov</span>
           </div>
 
           {loadError ? (
             <div className={styles.catalogEmpty} role="alert">
               <span className={styles.eyebrow}>Chyba načítania</span>
               <h2>{loadError}</h2>
-              {onRetry && (
-                <button type="button" onClick={onRetry}>
-                  Skúsiť znova
-                </button>
-              )}
+              <button type="button" onClick={() => setRetryCount((count) => count + 1)}>
+                Skúsiť znova
+              </button>
             </div>
-          ) : isLoading ? (
+          ) : !priceValid ? null : isLoading && offset === 0 ? (
             <div className={styles.catalogEmpty} role="status">
               <h2>Načítavame varianty…</h2>
             </div>
-          ) : visibleProducts.length > 0 ? (
-            visibleProducts.map((product) => (
+          ) : products.length > 0 ? (
+            products.map((product) => (
             <ProductCard key={`${product.id}-${product.colorId}`} product={product} />
             ))
           ) : subcategories.length === 0 ? (
@@ -309,6 +332,16 @@ export function CatalogListingClient({
               </p>
             </div>
           ) : null}
+          {priceValid && !loadError && hasMore && (
+            <button
+              className={styles.catalogMore}
+              type="button"
+              disabled={isLoading}
+              onClick={() => setPage({ key: filterKey, offset: offset + PAGE_SIZE })}
+            >
+              {isLoading ? "Načítavame…" : "Načítať ďalšie"}
+            </button>
+          )}
         </div>
       </section>
     </main>

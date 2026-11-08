@@ -13,13 +13,21 @@ export async function GET(request: NextRequest) {
   const audience = isTargetAudience(rawAudience) ? rawAudience : undefined;
   const rawLimit = searchParams.get("limit");
   const rawColorIds = searchParams.getAll("colorId");
+  const rawOffset = searchParams.get("offset");
+  const maxPrice = searchParams.get("maxPrice");
+  const stockOnly = searchParams.get("stockOnly");
+  const sort = searchParams.get("sort");
   const colorIds = rawColorIds.map(Number);
   if (
-    ["q", "category", "audience", "limit"].some((key) => searchParams.getAll(key).length > 1) ||
+    ["q", "category", "audience", "limit", "offset", "maxPrice", "stockOnly", "sort"].some((key) => searchParams.getAll(key).length > 1) ||
     (query !== undefined && !isValidCatalogQuery(query)) ||
     (categorySlug !== undefined && (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug) || categorySlug.length > 120)) ||
     (rawAudience !== null && !isTargetAudience(rawAudience)) ||
     (rawLimit !== null && (!/^[1-9]\d*$/.test(rawLimit) || Number(rawLimit) > 100)) ||
+    (rawOffset !== null && (!/^(0|[1-9]\d*)$/.test(rawOffset) || Number(rawOffset) > 2_147_483_647)) ||
+    (maxPrice !== null && !/^\d{1,8}(?:\.\d{1,2})?$/.test(maxPrice)) ||
+    (stockOnly !== null && stockOnly !== "true") ||
+    (sort !== null && sort !== "featured" && sort !== "price-asc" && sort !== "price-desc") ||
     colorIds.length > 100 ||
     rawColorIds.some((id) => !/^[1-9]\d*$/.test(id)) ||
     colorIds.some((id) => !Number.isSafeInteger(id) || id < 1 || id > 2_147_483_647)
@@ -39,6 +47,10 @@ export async function GET(request: NextRequest) {
       categorySlug,
       audience,
       limit,
+      offset: rawOffset === null ? 0 : Number(rawOffset),
+      ...(maxPrice !== null ? { maxPrice } : {}),
+      ...(stockOnly === "true" ? { stockOnly: true } : {}),
+      ...(sort === "featured" || sort === "price-asc" || sort === "price-desc" ? { sort } : {}),
       ...(colorIds.length ? { colorIds } : {}),
     });
     const catalogProducts: CatalogProductDto[] = data.map((product) => ({

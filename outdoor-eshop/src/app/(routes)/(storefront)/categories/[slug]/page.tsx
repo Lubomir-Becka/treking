@@ -5,7 +5,6 @@ import { CatalogListingClient } from "@/app/_components/catalog/CatalogListingCl
 import {
   getCategory,
   getSubcategories,
-  searchProducts,
 } from "@/features/products/composition/server";
 import { isTargetAudience } from "@/features/products/domain/product";
 import { isValidCatalogQuery } from "@/features/products/domain/catalogSearch";
@@ -28,21 +27,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!category) notFound();
   const audience = isTargetAudience(filters.audience) ? filters.audience : undefined;
 
-  const [products, subcategories] = await Promise.all([
-    searchProducts({
-      categorySlug: slug,
-      query: filters.q,
-      audience,
-      limit: 100,
-    }),
-    getSubcategories(category.id, audience),
-  ]);
+  const subcategories = await getSubcategories(category.id, audience);
 
   return (
     <>
       <Header />
       <CatalogListingClient
-        products={products}
+        categorySlug={slug}
         title={category.name}
         breadcrumb={[
           { label: "Kategórie", href: "/search" },

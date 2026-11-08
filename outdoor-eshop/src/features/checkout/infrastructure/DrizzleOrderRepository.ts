@@ -2,7 +2,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db } from "@/shared/db/client";
 import { isAllowedCartQuantity } from "@/features/cart/domain/cartQuantities";
-import { calculateShippingPrice } from "@/features/checkout/domain/shippingPrice";
+import { calculateOrderAmounts, centsToDecimal } from "@/features/checkout/domain/orderAmounts";
 import { shippingMethods } from "@/features/checkout/domain/shippingMethods";
 import {
   cartItems,
@@ -61,32 +61,26 @@ export class DrizzleOrderRepository implements OrderRepository {
         }
       }
 
-      const subtotal = items.reduce(
-        (sum, item) => sum + Number(item.price) * item.quantity,
-        0,
-      );
       const shippingMethod = shippingMethods.find((method) => method.code === input.shippingMethod);
 
       if (!shippingMethod) throw new Error("SHIPPING_METHOD_NOT_FOUND");
 
-      const shippingPrice = Number(shippingMethod.price);
-      const freeFromAmount =
-        shippingMethod.freeFromAmount === null
-          ? null
-          : Number(shippingMethod.freeFromAmount);
-      const shippingCost = calculateShippingPrice(subtotal, shippingPrice, freeFromAmount);
-      const totalPrice = subtotal + shippingCost;
+      const { subtotalCents, shippingCents, totalCents } = calculateOrderAmounts(
+        items,
+        shippingMethod.price,
+        shippingMethod.freeFromAmount,
+      );
       const orderNumber = `VT-${randomUUID().slice(0, 8).toUpperCase()}`;
 
       const [order] = await tx.insert(orders).values({
         userId: input.userId,
         customerEmail: input.email.trim().toLowerCase(),
         orderNumber,
-        itemsSubtotal: subtotal.toFixed(2),
-        shippingCost: shippingCost.toFixed(2),
+        itemsSubtotal: centsToDecimal(subtotalCents),
+        shippingCost: centsToDecimal(shippingCents),
         shippingMethod: shippingMethod.name,
         paymentMethod: input.paymentMethod,
-        totalPrice: totalPrice.toFixed(2),
+        totalPrice: centsToDecimal(totalCents),
         shippingRecipient: `${input.firstName.trim()} ${input.lastName.trim()}`,
         shippingStreet: input.street.trim(),
         shippingCity: input.city.trim(),
@@ -122,7 +116,7 @@ export class DrizzleOrderRepository implements OrderRepository {
 
       await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id));
 
-      return { orderNumber, totalPrice };
+      return { orderNumber, totalPrice: totalCents / 100 };
     });
   }
 }

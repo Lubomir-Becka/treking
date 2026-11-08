@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isJsonObject, readJsonBody } from "./readJsonBody";
 import type { UserRole } from "@/features/session/domain/UserRole";
+import { originError } from "./originError";
 
 type Login = (input: {
   email: string;
@@ -10,6 +11,8 @@ type Login = (input: {
 }) => Promise<{ id: number; email: string; role: UserRole }>;
 
 export async function handleLogin(request: Request, login: Login) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     const parsedBody = await readJsonBody(request);
     if (

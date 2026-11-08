@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
-export async function testProductImagesUi({ base, cookie, image }) {
+export async function testProductImagesUi({ base, cookie, colorId, image }) {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined });
   try {
     const context = await browser.newContext();
@@ -44,6 +44,14 @@ export async function testProductImagesUi({ base, cookie, image }) {
     const secondRow = second.locator("xpath=../..");
     await secondRow.getByRole("button", { name: "Nastaviť ako hlavný" }).click();
     await secondRow.getByText("Hlavný", { exact: false }).waitFor();
+    const storefront = await context.newPage();
+    await storefront.goto(`${base}/products/order-product?colorId=${colorId}`);
+    await storefront.getByText("Produktová galéria", { exact: true }).waitFor();
+    assert.ok(
+      await storefront.getByText("2 / 2", { exact: true }).isVisible(),
+      `Unexpected product detail: ${await storefront.locator("main").innerText()}`,
+    );
+    await storefront.close();
     await secondRow.getByRole("button", { name: "Posunúť vyššie" }).click();
     await page.waitForFunction((url) =>
       document.querySelector('img[alt="Obrázok 1: Black"]')?.getAttribute("src") === url, secondUrl);

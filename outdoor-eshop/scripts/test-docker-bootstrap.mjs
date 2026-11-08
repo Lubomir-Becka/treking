@@ -65,7 +65,7 @@ try {
   assert.ok(product, "Seed products are missing.");
   const login = await fetch(`${base}/api/admin/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: base },
     body: JSON.stringify({ email: env.DEMO_ADMIN_EMAIL, password: env.DEMO_ADMIN_PASSWORD }),
   });
   assert.equal(login.status, 200);

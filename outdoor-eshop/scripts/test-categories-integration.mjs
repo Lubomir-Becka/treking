@@ -142,6 +142,68 @@ try {
     });
   }
 
+  for (const [method, target] of [
+    ["POST", "/api/auth/login"],
+    ["POST", "/api/admin/auth/login"],
+    ["POST", "/api/auth/register"],
+    ["POST", "/api/auth/logout"],
+    ["POST", "/api/cart"],
+    ["PATCH", "/api/cart/items/1"],
+    ["DELETE", "/api/cart/items/1"],
+    ["PATCH", "/api/account/profile"],
+    ["POST", "/api/orders"],
+  ]) {
+    for (const origin of [null, "http://evil.example"]) {
+      assert.equal((await request(method, target, customer, {}, origin)).status, 403, `${method} ${target}`);
+    }
+  }
+
+  await sql`
+    insert into products (name, slug, brand)
+    select 'Catalog Check ' || lpad(n::text, 2, '0'), 'catalog-check-' || n, 'Test'
+    from generate_series(1, 27) as n
+  `;
+  await sql`
+    insert into product_colors (product_id, color_name)
+    select id, 'Test' from products where slug like 'catalog-check-%'
+  `;
+  await sql`
+    insert into product_variants (product_color_id, sku, size, price, stock)
+    select c.id, 'catalog-check-' || p.id, 'M',
+      case when p.slug = 'catalog-check-27' then 1000 else 10 end, 2
+    from product_colors c join products p on p.id = c.product_id
+    where p.slug like 'catalog-check-%'
+  `;
+  const firstCatalogPage = await (await request("GET", "/api/products?q=Catalog%20Check&limit=24")).json();
+  const secondCatalogPage = await (await request("GET", "/api/products?q=Catalog%20Check&limit=24&offset=24")).json();
+  assert.equal(firstCatalogPage.data.length, 24);
+  assert.equal(secondCatalogPage.data.length, 3);
+  assert.ok(secondCatalogPage.data.some((item) => item.price === "1000.00"));
+  const expensiveFirst = await (await request("GET", "/api/products?q=Catalog%20Check&limit=1&sort=price-desc")).json();
+  assert.equal(expensiveFirst.data[0].price, "1000.00");
+  const cheap = await (await request("GET", "/api/products?q=Catalog%20Check&limit=100&maxPrice=850")).json();
+  assert.equal(cheap.data.length, 26);
+  await sql`update product_variants set stock = 0 where sku = (
+    select 'catalog-check-' || id from products where slug = 'catalog-check-1'
+  )`;
+  await sql`
+    insert into product_variants (product_color_id, sku, size, price, stock)
+    select c.id, 'catalog-check-extra', 'L', 1000, 1
+    from product_colors c join products p on p.id = c.product_id
+    where p.slug = 'catalog-check-1'
+  `;
+  const cheapInStock = await (await request("GET", "/api/products?q=Catalog%20Check&limit=100&maxPrice=850&stockOnly=true")).json();
+  assert.equal(cheapInStock.data.length, 25);
+  assert.ok(!cheapInStock.data.some((item) => item.slug === "catalog-check-1"));
+  for (const query of ["offset=-1", "offset=2147483648", "maxPrice=-1", "maxPrice=1.234", "sort=invalid", "stockOnly=false"]) {
+    assert.equal((await request("GET", `/api/products?${query}`)).status, 400, query);
+  }
+  if (process.env.CATEGORY_UI_TEST === "1") {
+    const { testCatalogUi } = await import("./test-catalog-ui.mjs");
+    await testCatalogUi(base);
+  }
+  await sql`delete from products where slug like 'catalog-check-%'`;
+
   const loginPassword = "integration-login-password";
   const loginHash = await bcrypt.hash(loginPassword, 4);
   await sql`update users set password_hash = ${loginHash} where email in ('admin@integration.test', 'customer@integration.test')`;
@@ -551,6 +613,7 @@ try {
   assert.equal(gallery.find((entry) => entry.isPrimary).id, imageOrder[1]);
   const productDetail = (await (await request("GET", "/api/products/order-product")).json()).data;
   assert.deepEqual(productDetail.colors.find((entry) => entry.id === color.id).images.map((entry) => entry.url), gallery.map((entry) => entry.url));
+  assert.equal(productDetail.colors.find((entry) => entry.id === color.id).images[1].isPrimary, true);
   for (const entry of gallery.filter((item) => item.url.startsWith("/api/product-images/"))) {
     assert.equal((await request("PATCH", galleryPath, admin, { type: "delete", imageId: entry.id })).status, 200);
   }
@@ -693,6 +756,14 @@ try {
   await sql`update products set is_active = false where id = ${product.id}`;
   assert.equal((await request("POST", "/api/orders", customer, checkoutDetails)).status, 409);
   await sql`update products set is_active = true where id = ${product.id}`;
+  await sql`update product_variants set price = 99999999.99 where id = ${variant.id}`;
+  await sql`update cart_items set quantity = 2 where id = ${cartItem.id}`;
+  const excessiveTotal = await request("POST", "/api/orders", customer, checkoutDetails);
+  assert.equal(excessiveTotal.status, 409);
+  assert.match((await excessiveTotal.json()).error, /suma objednávky/);
+  assert.equal((await sql`select quantity from cart_items where id = ${cartItem.id}`)[0].quantity, 2);
+  await sql`update product_variants set price = 10 where id = ${variant.id}`;
+  await sql`update cart_items set quantity = 1 where id = ${cartItem.id}`;
   const checkout = await request("POST", "/api/orders", customer, checkoutDetails);
   assert.equal(checkout.status, 201, await checkout.clone().text());
   const createdNumber = (await checkout.json()).data.orderNumber;

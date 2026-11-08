@@ -1,13 +1,8 @@
 .footer { background: #071d15; color: white; padding: 70px max(24px, calc((100% - 1120px) / 2)) 25px; }
-.main { display: grid; gap: 60px; grid-template-columns: 1.5fr repeat(3, 1fr); }
+.main { display: block; }
 .brand p { color: #a3b8ad; font-size: 13px; line-height: 1.6; margin-top: 28px; }
 .partner { border-left: 2px solid #d6a64a; color: #a3b8ad; display: block; font-size: 9px; line-height: 1.5; margin-top: 30px; padding-left: 12px; }
-.column { display: flex; flex-direction: column; gap: 15px; }
-.column .eyebrow { color: #85a398; margin-bottom: 5px; }
-.column a, .column > span:not(.eyebrow) { color: #c0cec7; font-size: 11px; }
 .bottom { border-top: 1px solid rgba(255,255,255,.15); color: #698176; display: flex; font-size: 9px; justify-content: space-between; letter-spacing: .04em; margin-top: 65px; padding-top: 20px; }
 @media (max-width: 800px) {
-  .main { gap: 35px; grid-template-columns: repeat(2, 1fr); }
-  .brand { grid-column: span 2; }
   .bottom { flex-direction: column; gap: 12px; }
 }

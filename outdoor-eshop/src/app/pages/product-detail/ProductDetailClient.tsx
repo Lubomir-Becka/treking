@@ -22,7 +22,9 @@ export default function ProductDetailClient({
     product.colors.find((color) => color.id === initialColorId) ??
     product.colors[0];
   const [selectedColorId, setSelectedColorId] = useState(firstColor?.id);
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedImage, setSelectedImage] = useState(
+    Math.max(0, firstColor?.images.findIndex((image) => image.isPrimary) ?? -1),
+  );
   const [selectedSize, setSelectedSize] = useState(
     firstColor?.variants[0]?.size ?? "",
   );
@@ -40,7 +42,7 @@ export default function ProductDetailClient({
 
   function chooseColor(color: ProductDetail["colors"][number]) {
     setSelectedColorId(color.id);
-    setSelectedImage(0);
+    setSelectedImage(Math.max(0, color.images.findIndex((image) => image.isPrimary)));
     setSelectedSize(color.variants[0]?.size ?? "");
   }
 

@@ -3,8 +3,11 @@ import { NextResponse } from "next/server";
 import { registerCustomer } from "@/shared/composition/server";
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 import { validateRegistration } from "@/shared/domain/contactValidation";
+import { originError } from "@/shared/server/http/originError";
 
 export async function POST(request: Request) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     const parsedBody = await readJsonBody(request);
     if (

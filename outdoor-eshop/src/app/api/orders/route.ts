@@ -5,6 +5,7 @@ import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 import { parseOrderBody } from "./parseOrderBody";
 import { validateOrderDetails } from "@/features/checkout/domain/OrderValidation";
 import { isPaymentMethodCode, isShippingMethodCode } from "@/features/checkout/domain/checkout";
+import { originError } from "@/shared/server/http/originError";
 
 async function getUserId(): Promise<number> {
   const actor = await resolveActor();
@@ -18,6 +19,8 @@ async function getUserId(): Promise<number> {
 }
 
 export async function POST(request: Request) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     const parsedBody = await readJsonBody(request);
     if (!parsedBody.valid) {
@@ -68,6 +71,9 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "INVALID_CART_QUANTITY") {
       return NextResponse.json({ error: "Upravte množstvo položiek na maximálne 99 kusov." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "ORDER_TOTAL_TOO_HIGH") {
+      return NextResponse.json({ error: "Celková suma objednávky je príliš vysoká. Upravte košík." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "SHIPPING_METHOD_NOT_FOUND") {
       return NextResponse.json({ error: "Zvolený spôsob dopravy nie je dostupný." }, { status: 400 });

@@ -3,8 +3,11 @@ import { resolveActor, updateCustomerProfile } from "@/shared/composition/server
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 import { validateOptionalPhone, validateProfileNames } from "@/shared/domain/contactValidation";
 import { isValidCustomerEmail } from "@/shared/domain/email";
+import { originError } from "@/shared/server/http/originError";
 
 export async function PATCH(request: Request) {
+  const denied = originError(request);
+  if (denied) return denied;
   try {
     const actor = await resolveActor();
     if (actor.type !== "authenticated") {

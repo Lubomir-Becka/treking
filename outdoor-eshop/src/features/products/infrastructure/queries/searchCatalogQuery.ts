@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, max, min, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, max, min, or, sql } from "drizzle-orm";
 import { db } from "@/shared/db/client";
 import {
   categories,
@@ -102,8 +102,26 @@ export async function searchCatalogQuery(criteria: ProductSearchCriteria): Promi
       categories.slug,
       products.audience,
     )
-    .orderBy(asc(products.name))
-    .limit(criteria.limit ?? 24);
+    .having(and(
+      ...(criteria.maxPrice !== undefined && criteria.stockOnly
+        ? [sql`count(*) filter (where ${productVariants.price} <= ${criteria.maxPrice}::numeric and ${productVariants.stock} > 0) > 0`]
+        : [
+            ...(criteria.maxPrice !== undefined ? [sql`min(${productVariants.price}) <= ${criteria.maxPrice}::numeric`] : []),
+            ...(criteria.stockOnly ? [sql`max(${productVariants.stock}) > 0`] : []),
+          ]),
+    ))
+    .orderBy(
+      ...(criteria.sort === "price-asc"
+        ? [asc(min(productVariants.price))]
+        : criteria.sort === "price-desc"
+          ? [desc(min(productVariants.price))]
+          : []),
+      asc(products.name),
+      asc(products.id),
+      asc(productColors.id),
+    )
+    .limit(criteria.limit ?? 24)
+    .offset(criteria.offset ?? 0);
 
   return rows.map((row) => ({
     ...row,
