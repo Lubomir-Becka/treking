@@ -19,6 +19,35 @@ export const users = pgTable("users", {
 	check("email_lowercase_check", sql`(email)::text = lower((email)::text)`),
 ]);
 
+export const userSessions = pgTable("user_sessions", {
+	id: serial().primaryKey().notNull(),
+	userId: integer("user_id").notNull(),
+	tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	ipAddress: varchar("ip_address", { length: 45 }),
+	userAgent: text("user_agent"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+	unique("user_sessions_token_hash_key").on(table.tokenHash),
+	index("idx_user_sessions_token_hash").using("btree", table.tokenHash.asc().nullsLast().op("text_ops")),
+	index("idx_user_sessions_user_id").using("btree", table.userId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "user_sessions_user_id_fkey",
+	}).onDelete("cascade"),
+]);
+
+export const guestSessions = pgTable("guest_sessions", {
+	id: serial().primaryKey().notNull(),
+	tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+	unique("guest_sessions_token_hash_key").on(table.tokenHash),
+	index("idx_guest_sessions_token_hash").using("btree", table.tokenHash.asc().nullsLast().op("text_ops")),
+]);
+
 export const addresses = pgTable("addresses", {
 	id: serial().primaryKey().notNull(),
 	userId: integer("user_id").notNull(),
@@ -62,12 +91,14 @@ export const products = pgTable("products", {
 	description: text(),
 	brand: varchar({ length: 50 }).notNull(),
 	categoryId: integer("category_id"),
+	audience: varchar({ length: 10 }).default('unisex').notNull(),
 	isActive: boolean("is_active").default(true),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
 	index("idx_products_brand").using("btree", table.brand.asc().nullsLast().op("text_ops")),
 	index("idx_products_category").using("btree", table.categoryId.asc().nullsLast().op("int4_ops")),
+	index("idx_products_audience").using("btree", table.audience.asc().nullsLast().op("text_ops")),
 	index("idx_products_is_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
 	index("idx_products_slug").using("btree", table.slug.asc().nullsLast().op("text_ops")),
 	foreignKey({
@@ -76,6 +107,7 @@ export const products = pgTable("products", {
 			name: "products_category_id_fkey"
 		}).onDelete("set null"),
 	unique("products_slug_key").on(table.slug),
+	check("products_audience_check", sql`(audience)::text = ANY ((ARRAY['men'::character varying, 'women'::character varying, 'kids'::character varying, 'unisex'::character varying])::text[])`),
 ]);
 
 export const productAttributes = pgTable("product_attributes", {
@@ -250,7 +282,8 @@ export const orderItems = pgTable("order_items", {
 
 export const orders = pgTable("orders", {
 	id: serial().primaryKey().notNull(),
-	userId: integer("user_id").notNull(),
+	userId: integer("user_id"),
+	customerEmail: varchar("customer_email", { length: 100 }).notNull(),
 	orderNumber: varchar("order_number", { length: 50 }).notNull(),
 	itemsSubtotal: numeric("items_subtotal", { precision: 10, scale:  2 }).notNull(),
 	shippingCost: numeric("shipping_cost", { precision: 10, scale:  2 }).notNull(),
