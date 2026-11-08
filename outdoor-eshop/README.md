@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Outdoor e-shop
 
-## Getting Started
+The project is a Next.js modular monolith for an outdoor equipment shop. Source
+code is grouped first by Clean Architecture layer and then by business area:
 
-First, run the development server:
+- `src/domain/{area}`: framework-independent models, rules, and ports.
+- `src/application/{area}`: use cases and orchestration.
+- `src/infrastructure/{area}`: database, browser API, and external adapters.
+- `src/presentation/{area}`: UI, client entry points, and input/output mapping.
+- `src/composition/client` and `src/composition/server`: client- and
+  server-side composition roots that wire application use cases to
+  infrastructure adapters.
+- `src/app`: Next.js routes and API endpoints.
+- `src/components`: UI components shared across areas.
+- `src/server`: server-only helpers that are not business or infrastructure
+  adapters, such as HTTP request parsing.
+
+Products owns catalog search, categories, product details, and catalog API
+contracts. Cart owns cart operations; Checkout owns order creation and its
+atomic cart, stock, order, and payment transaction. Session owns identity and
+session lifecycle; Customer owns account data and favorite-color state.
+
+## Development
+
+Install dependencies, configure the database environment, then run:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The application is available at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run db:migrate
+npm run db:seed
+```
 
-## Learn More
+The seed is idempotent and can be run repeatedly. The catalog API reads active
+products from PostgreSQL through Drizzle:
 
-To learn more about Next.js, take a look at the following resources:
+```text
+GET /api/products?q=Kriváň&category=hardshell-bundy&limit=24
+GET /api/products/krivan-pro-3l
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm test
+npx tsc --noEmit
+npm run lint
+npm run build
+```
 
-## Deploy on Vercel
+## Deployment notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Login throttling is held in process memory, so each application process enforces
+its own 10-attempt, 15-minute window per normalized email. This is bounded but
+is not distributed protection; use a shared rate-limit store before scaling
+across multiple processes. The application also reads `x-forwarded-for` for
+session metadata, so the deployment proxy must overwrite that header rather
+than forward a client-supplied value.
