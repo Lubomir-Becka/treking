@@ -4,15 +4,12 @@ import { resolve, sep } from "node:path";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../src/shared/db/client";
 import {
-  attributes,
   categories,
-  productAttributes,
   productColors,
   productImages,
   products,
   orderItems,
   productVariants,
-  shippingMethods,
 } from "../drizzle/schema";
 import { sql } from "drizzle-orm";
 
@@ -39,11 +36,6 @@ type CatalogProduct = {
     hexCode: string;
   };
   images: ProductImage[];
-  attributes: Array<{
-    name: string;
-    unit?: string;
-    value: string;
-  }>;
 };
 
 type ColorwayCatalogProduct = Omit<CatalogProduct, "color" | "images"> & {
@@ -291,36 +283,6 @@ async function seedCatalogProduct(catalogProduct: CatalogProduct) {
     });
   }
 
-  for (const attribute of catalogProduct.attributes) {
-    await db
-      .insert(attributes)
-      .values({
-        name: attribute.name,
-        unit: attribute.unit,
-      })
-      .onConflictDoNothing({ target: attributes.name });
-
-    const [storedAttribute] = await db
-      .select({ id: attributes.id })
-      .from(attributes)
-      .where(eq(attributes.name, attribute.name))
-      .limit(1);
-
-    if (!storedAttribute) {
-      throw new Error(`Unable to create attribute "${attribute.name}".`);
-    }
-
-    await db
-      .insert(productAttributes)
-      .values({
-        productId,
-        attributeId: storedAttribute.id,
-        value: attribute.value,
-      })
-      .onConflictDoNothing({
-        target: [productAttributes.productId, productAttributes.attributeId],
-      });
-  }
 }
 
 async function seedColorwayCatalogProduct(catalogProduct: ColorwayCatalogProduct) {
@@ -407,33 +369,6 @@ async function seedColorwayCatalogProduct(catalogProduct: ColorwayCatalogProduct
     }
   }
 
-  for (const attribute of catalogProduct.attributes) {
-    await db
-      .insert(attributes)
-      .values({ name: attribute.name, unit: attribute.unit })
-      .onConflictDoNothing({ target: attributes.name });
-
-    const [storedAttribute] = await db
-      .select({ id: attributes.id })
-      .from(attributes)
-      .where(eq(attributes.name, attribute.name))
-      .limit(1);
-
-    if (!storedAttribute) {
-      throw new Error(`Unable to create or find attribute "${attribute.name}".`);
-    }
-
-    await db
-      .insert(productAttributes)
-      .values({
-        productId,
-        attributeId: storedAttribute.id,
-        value: attribute.value,
-      })
-      .onConflictDoNothing({
-        target: [productAttributes.productId, productAttributes.attributeId],
-      });
-  }
 }
 
 const krivanImages: ProductImage[] = [
@@ -504,38 +439,6 @@ async function seed() {
     .update(products)
     .set({ audience: "men" })
     .where(eq(products.id, productId));
-
-  const attributeValues = [
-    { name: "Membrána", unit: undefined },
-    { name: "Vodný stĺpec", unit: "mm" },
-    { name: "Paropriepustnosť", unit: "RET" },
-    { name: "Hmotnosť", unit: "g" },
-  ];
-
-  for (const attribute of attributeValues) {
-    await db.insert(attributes).values(attribute).onConflictDoNothing({ target: attributes.name });
-    const [storedAttribute] = await db
-      .select({ id: attributes.id })
-      .from(attributes)
-      .where(eq(attributes.name, attribute.name))
-      .limit(1);
-
-    if (!storedAttribute) {
-      throw new Error(`Unable to create or find attribute "${attribute.name}".`);
-    }
-
-    const values: Record<string, string> = {
-      Membrána: "3-vrstvový GORE-TEX Pro Most Breathable",
-      "Vodný stĺpec": "28000",
-      Paropriepustnosť: "< 4.5",
-      Hmotnosť: "465",
-    };
-
-    await db
-      .insert(productAttributes)
-      .values({ productId, attributeId: storedAttribute.id, value: values[attribute.name] })
-      .onConflictDoNothing({ target: [productAttributes.productId, productAttributes.attributeId] });
-  }
 
   const colors = [
     { colorName: "Lesná zelená", hexCode: "#1b382b" },
@@ -629,10 +532,7 @@ async function seed() {
           order: 3,
         },
       ],
-      attributes: [
-        { name: "Objem", unit: "l", value: "40" },
-        { name: "Hmotnosť", unit: "g", value: "1180" },
-      ],
+
     },
     {
       category: {
@@ -663,10 +563,7 @@ async function seed() {
           order: 1,
         },
       ],
-      attributes: [
-        { name: "Materiál", value: "Cordura Ripstop" },
-        { name: "Hmotnosť", unit: "g", value: "410" },
-      ],
+
     },
   ];
 
@@ -703,11 +600,7 @@ async function seed() {
           ],
         },
       ],
-      attributes: [
-        { name: "Typ", value: "Zateplená turistická bunda" },
-        { name: "Kapucňa", value: "Integrovaná" },
-        { name: "Zapínanie", value: "Predný zips" },
-      ],
+
     },
     {
       category: { name: "Hardshell bundy", slug: "hardshell-bundy" },
@@ -779,11 +672,7 @@ async function seed() {
           ],
         },
       ],
-      attributes: [
-        { name: "Typ", value: "Ľahká turistická bunda" },
-        { name: "Kapucňa", value: "Integrovaná" },
-        { name: "Vrecká", value: "Dve bočné vrecká na zips" },
-      ],
+
     },
   ];
 
@@ -828,7 +717,7 @@ async function seed() {
           ],
         },
       ],
-      attributes: [{ name: "Výška obuvi", value: "Stredná" }],
+
     },
     {
       category: { name: "Turistická obuv", slug: "turisticka-obuv" },
@@ -871,7 +760,7 @@ async function seed() {
           ],
         },
       ],
-      attributes: [{ name: "Výška obuvi", value: "Vysoká" }],
+
     },
     {
       category: { name: "Turistická obuv", slug: "turisticka-obuv" },
@@ -914,41 +803,13 @@ async function seed() {
           ],
         },
       ],
-      attributes: [{ name: "Výška obuvi", value: "Nízka" }],
+
     },
   ];
 
   for (const product of newFootwear) {
     await seedColorwayCatalogProduct(product);
   }
-
-  await db
-    .insert(shippingMethods)
-    .values([
-      {
-        code: "courier",
-        name: "Kuriér na adresu",
-        price: "5.90",
-        freeFromAmount: "150.00",
-        isActive: true,
-      },
-      {
-        code: "pickup",
-        name: "Osobný odber Ateliér Tatran",
-        price: "0.00",
-        freeFromAmount: null,
-        isActive: true,
-      },
-    ])
-    .onConflictDoUpdate({
-      target: shippingMethods.code,
-      set: {
-        name: sql`excluded.name`,
-        price: sql`excluded.price`,
-        freeFromAmount: sql`excluded.free_from_amount`,
-        isActive: sql`excluded.is_active`,
-      },
-    });
 
   await db
     .delete(productImages)

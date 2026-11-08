@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, userSessions, guestSessions, categories, products, productAttributes, attributes, productColors, productImages, productVariants, favorites, carts, cartItems, orders, orderItems, shippingMethods } from "./schema";
+import { users, userSessions, guestSessions, categories, products, productColors, productImages, productVariants, favorites, carts, cartItems, orders, orderItems } from "./schema";
 
 export const usersRelations = relations(users, ({many}) => ({
 	userSessions: many(userSessions),
@@ -34,23 +34,7 @@ export const productsRelations = relations(products, ({one, many}) => ({
 		fields: [products.categoryId],
 		references: [categories.id]
 	}),
-	productAttributes: many(productAttributes),
 	productColors: many(productColors),
-}));
-
-export const productAttributesRelations = relations(productAttributes, ({one}) => ({
-	product: one(products, {
-		fields: [productAttributes.productId],
-		references: [products.id]
-	}),
-	attribute: one(attributes, {
-		fields: [productAttributes.attributeId],
-		references: [attributes.id]
-	}),
-}));
-
-export const attributesRelations = relations(attributes, ({many}) => ({
-	productAttributes: many(productAttributes),
 }));
 
 export const productColorsRelations = relations(productColors, ({one, many}) => ({
@@ -127,5 +111,3 @@ export const ordersRelations = relations(orders, ({one, many}) => ({
 		references: [users.id]
 	}),
 }));
-
-export const shippingMethodsRelations = relations(shippingMethods, () => ({}));

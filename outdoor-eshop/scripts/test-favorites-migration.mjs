@@ -100,6 +100,22 @@ export async function testFavoritesMigration(port) {
         to_regclass('public.shipping') as shipping
     `;
     assert.deepEqual({ ...tables }, { addresses: null, payments: null, shipping: null });
+    const [legacyAttribute] = await sql`insert into attributes (name) values ('Material') returning id`;
+    await sql`insert into product_attributes (product_id, attribute_id, value) values (${product.id}, ${legacyAttribute.id}, 'Cotton')`;
+    const removal = await readFile("drizzle/0009_remove_attributes_shipping.sql", "utf8");
+    await sql.begin(async (tx) => {
+      for (const statement of removal.split("--> statement-breakpoint")) {
+        if (statement.trim()) await tx.unsafe(statement);
+      }
+    });
+    const [preserved] = await sql`select order_number, shipping_method, payment_method from orders where id = ${order.id}`;
+    assert.deepEqual({ ...preserved }, { order_number: "LEGACY-1", shipping_method: "Legacy courier", payment_method: "cod" });
+    const [removed] = await sql`
+      select to_regclass('public.attributes') as attributes,
+        to_regclass('public.product_attributes') as product_attributes,
+        to_regclass('public.shipping_methods') as shipping_methods
+    `;
+    assert.deepEqual({ ...removed }, { attributes: null, product_attributes: null, shipping_methods: null });
     console.log("Order simplification migration tests passed.");
   } finally {
     await sql.end();

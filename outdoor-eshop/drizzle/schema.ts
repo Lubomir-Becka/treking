@@ -95,35 +95,6 @@ export const products = pgTable("products", {
 	check("products_audience_check", sql`(audience)::text = ANY ((ARRAY['men'::character varying, 'women'::character varying, 'unisex'::character varying])::text[])`),
 ]);
 
-export const productAttributes = pgTable("product_attributes", {
-	id: serial().primaryKey().notNull(),
-	productId: integer("product_id").notNull(),
-	attributeId: integer("attribute_id").notNull(),
-	value: varchar({ length: 255 }).notNull(),
-}, (table) => [
-	index("idx_product_attributes_lookup").using("btree", table.attributeId.asc().nullsLast().op("int4_ops"), table.value.asc().nullsLast().op("text_ops")),
-	index("idx_product_attributes_product_id").using("btree", table.productId.asc().nullsLast().op("int4_ops")),
-	foreignKey({
-			columns: [table.productId],
-			foreignColumns: [products.id],
-			name: "product_attributes_product_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.attributeId],
-			foreignColumns: [attributes.id],
-			name: "product_attributes_attribute_id_fkey"
-		}).onDelete("cascade"),
-	unique("unique_attribute_per_product").on(table.productId, table.attributeId),
-]);
-
-export const attributes = pgTable("attributes", {
-	id: serial().primaryKey().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	unit: varchar({ length: 20 }),
-}, (table) => [
-	unique("attributes_name_key").on(table.name),
-]);
-
 export const productColors = pgTable("product_colors", {
 	id: serial().primaryKey().notNull(),
 	productId: integer("product_id").notNull(),
@@ -299,17 +270,4 @@ export const orders = pgTable("orders", {
 	check("orders_total_price_check", sql`total_price >= (0)::numeric`),
 	check("orders_status_check", sql`(status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'shipped'::character varying, 'delivered'::character varying, 'cancelled'::character varying])::text[])`),
 	check("valid_order_total_check", sql`total_price = (items_subtotal + shipping_cost)`),
-]);
-
-export const shippingMethods = pgTable("shipping_methods", {
-	id: serial().primaryKey().notNull(),
-	code: varchar({ length: 50 }).notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	price: numeric({ precision: 10, scale:  2 }).notNull(),
-	freeFromAmount: numeric("free_from_amount", { precision: 10, scale:  2 }),
-	isActive: boolean("is_active").default(true),
-}, (table) => [
-	unique("shipping_methods_code_key").on(table.code),
-	check("shipping_methods_price_check", sql`price >= (0)::numeric`),
-	check("shipping_methods_free_from_amount_check", sql`free_from_amount >= (0)::numeric`),
 ]);

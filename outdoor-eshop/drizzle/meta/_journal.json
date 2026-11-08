@@ -64,6 +64,13 @@
       "when": 1794170503217,
       "tag": "0008_simplify_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794172568413,
+      "tag": "0009_remove_attributes_shipping",
+      "breakpoints": true
     }
   ]
 }

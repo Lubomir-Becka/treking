@@ -1,9 +1,7 @@
 import { and, asc, eq, ilike, inArray, max, min, or } from "drizzle-orm";
 import { db } from "@/shared/db/client";
 import {
-  attributes,
   categories,
-  productAttributes,
   productColors,
   productImages,
   products,
@@ -42,8 +40,6 @@ export async function searchCatalogQuery(criteria: ProductSearchCriteria): Promi
             ilike(products.description, `%${searchTerm}%`),
             ilike(categories.name, `%${searchTerm}%`),
             ilike(productColors.colorName, `%${searchTerm}%`),
-            ilike(attributes.name, `%${searchTerm}%`),
-            ilike(productAttributes.value, `%${searchTerm}%`),
           ),
         ]
       : []),
@@ -88,20 +84,12 @@ export async function searchCatalogQuery(criteria: ProductSearchCriteria): Promi
         eq(productVariants.isActive, true),
       ),
     )
-    .innerJoin(
+    .leftJoin(
       productImages,
       and(
         eq(productImages.productColorId, productColors.id),
         eq(productImages.isPrimary, true),
       ),
-    )
-    .leftJoin(
-      productAttributes,
-      eq(productAttributes.productId, products.id),
-    )
-    .leftJoin(
-      attributes,
-      eq(productAttributes.attributeId, attributes.id),
     )
     .where(and(...filters))
     .groupBy(

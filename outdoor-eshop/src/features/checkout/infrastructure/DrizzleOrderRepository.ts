@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/shared/db/client";
 import { isAllowedCartQuantity } from "@/features/cart/domain/cartQuantities";
 import { calculateShippingPrice } from "@/features/checkout/domain/shippingPrice";
+import { shippingMethods } from "@/features/checkout/domain/shippingMethods";
 import {
   cartItems,
   carts,
@@ -11,7 +12,6 @@ import {
   productColors,
   productVariants,
   products,
-  shippingMethods,
 } from "../../../../drizzle/schema";
 import type {
   CreatedOrder,
@@ -42,19 +42,21 @@ export class DrizzleOrderRepository implements OrderRepository {
           stock: productVariants.stock,
           quantity: cartItems.quantity,
           active: productVariants.isActive,
+          productActive: products.isActive,
         })
         .from(cartItems)
         .innerJoin(productVariants, eq(cartItems.productVariantId, productVariants.id))
         .innerJoin(productColors, eq(productVariants.productColorId, productColors.id))
         .innerJoin(products, eq(productColors.productId, products.id))
-        .where(eq(cartItems.cartId, cart.id));
+        .where(eq(cartItems.cartId, cart.id))
+        .for("update");
 
       if (items.length === 0) throw new Error("EMPTY_CART");
       for (const item of items) {
         if (!isAllowedCartQuantity(item.quantity)) {
           throw new Error("INVALID_CART_QUANTITY");
         }
-        if (!item.active || (item.stock ?? 0) < item.quantity) {
+        if (!item.active || !item.productActive || (item.stock ?? 0) < item.quantity) {
           throw new Error("INSUFFICIENT_STOCK");
         }
       }
@@ -63,20 +65,7 @@ export class DrizzleOrderRepository implements OrderRepository {
         (sum, item) => sum + Number(item.price) * item.quantity,
         0,
       );
-      const [shippingMethod] = await tx
-        .select({
-          name: shippingMethods.name,
-          price: shippingMethods.price,
-          freeFromAmount: shippingMethods.freeFromAmount,
-        })
-        .from(shippingMethods)
-        .where(
-          and(
-            eq(shippingMethods.code, input.shippingMethod),
-            eq(shippingMethods.isActive, true),
-          ),
-        )
-        .limit(1);
+      const shippingMethod = shippingMethods.find((method) => method.code === input.shippingMethod);
 
       if (!shippingMethod) throw new Error("SHIPPING_METHOD_NOT_FOUND");
 

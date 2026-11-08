@@ -1,9 +1,3 @@
-export type ProductAttribute = {
-  label: string;
-  unit: string | null;
-  value: string;
-};
-
 export type ProductVariant = {
   id: number;
   sku: string;
@@ -36,7 +30,6 @@ export type ProductDetail = {
   categorySlug: string | null;
   audience: TargetAudience;
   price: number | null;
-  attributes: ProductAttribute[];
   colors: ProductColor[];
 };
 

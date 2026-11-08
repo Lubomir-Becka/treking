@@ -1,15 +1,14 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db/client";
 import {
-  attributes,
   categories,
-  productAttributes,
   productColors,
   productImages,
   products,
   productVariants,
 } from "../../../../../drizzle/schema";
 import type { ProductDetail } from "../../domain/product";
+import { compareSizes } from "../../domain/compareSizes";
 import { parseAudience } from "./helpers";
 
 export async function findProductDetailQuery(slug: string): Promise<ProductDetail | null> {
@@ -33,8 +32,7 @@ export async function findProductDetailQuery(slug: string): Promise<ProductDetai
     return null;
   }
 
-  const [colors, productAttributesResult] = await Promise.all([
-    db
+  const colors = await db
       .select({
         id: productColors.id,
         name: productColors.colorName,
@@ -50,7 +48,7 @@ export async function findProductDetailQuery(slug: string): Promise<ProductDetai
         variantActive: productVariants.isActive,
       })
       .from(productColors)
-      .innerJoin(productImages, eq(productImages.productColorId, productColors.id))
+      .leftJoin(productImages, eq(productImages.productColorId, productColors.id))
       .leftJoin(
         productVariants,
         eq(productVariants.productColorId, productColors.id),
@@ -60,18 +58,7 @@ export async function findProductDetailQuery(slug: string): Promise<ProductDetai
         asc(productColors.id),
         asc(productImages.displayOrder),
         asc(productVariants.size),
-      ),
-    db
-      .select({
-        label: attributes.name,
-        unit: attributes.unit,
-        value: productAttributes.value,
-      })
-      .from(productAttributes)
-      .innerJoin(attributes, eq(productAttributes.attributeId, attributes.id))
-      .where(eq(productAttributes.productId, product.id))
-      .orderBy(asc(attributes.name)),
-  ]);
+      );
 
   const colorMap = new Map<number, ProductDetail["colors"][number]>();
 
@@ -109,15 +96,19 @@ export async function findProductDetailQuery(slug: string): Promise<ProductDetai
     colorMap.set(row.id, color);
   }
 
-  const variants = Array.from(colorMap.values()).flatMap(
+  const sortedColors = Array.from(colorMap.values());
+  for (const color of sortedColors) {
+    color.variants.sort((first, second) => compareSizes(first.size, second.size));
+  }
+
+  const variants = sortedColors.flatMap(
     (color) => color.variants,
   );
 
   return {
     ...product,
     audience: parseAudience(product.audience),
-    attributes: productAttributesResult,
-    colors: Array.from(colorMap.values()),
+    colors: sortedColors,
     price: variants.length
       ? Math.min(...variants.map((variant) => variant.price))
       : null,

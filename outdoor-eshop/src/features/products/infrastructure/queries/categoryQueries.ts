@@ -23,7 +23,7 @@ export async function findCategoryQuery(slug: string) {
       slug: categories.slug,
       parentId: categories.parentId,
       imageUrl: sql<string | null>`min(${productImages.imageUrl})`,
-      productCount: sql<number>`count(distinct case when ${productImages.id} is not null then ${productColors.id} end)`,
+      productCount: sql<number>`count(distinct ${productColors.id})`,
     })
     .from(categories)
     .leftJoin(products, and(eq(products.categoryId, categories.id), eq(products.isActive, true)))
@@ -54,7 +54,7 @@ export async function findCategoriesQuery(
       slug: categories.slug,
       parentId: categories.parentId,
       imageUrl: sql<string | null>`min(${productImages.imageUrl})`,
-      productCount: sql<number>`count(distinct case when ${productImages.id} is not null then ${productColors.id} end)`,
+      productCount: sql<number>`count(distinct ${productColors.id})`,
     })
     .from(categories)
     .leftJoin(childCategories, eq(childCategories.parentId, categories.id))
@@ -96,7 +96,7 @@ export async function findSubcategoriesQuery(
       slug: categories.slug,
       parentId: categories.parentId,
       imageUrl: sql<string | null>`min(${productImages.imageUrl})`,
-      productCount: sql<number>`count(distinct case when ${productImages.id} is not null then ${productColors.id} end)`,
+      productCount: sql<number>`count(distinct ${productColors.id})`,
     })
     .from(categories)
     .leftJoin(
