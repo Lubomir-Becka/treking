@@ -8,6 +8,7 @@
     "test": "node --import tsx --test $(find src -name '*.test.ts' -print) scripts/architecture-rules.test.mjs",
     "test:categories:integration": "node scripts/test-categories-integration.mjs",
     "test:categories:ui": "CATEGORY_UI_TEST=1 node scripts/test-categories-integration.mjs",
+    "test:docker:bootstrap": "node scripts/test-docker-bootstrap.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
