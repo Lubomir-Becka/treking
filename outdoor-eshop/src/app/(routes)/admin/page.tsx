@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authorizeAdmin } from "@/shared/composition/server";
 import { AdminPage } from "@/app/pages/admin/AdminPage";
+import { categoryManagement } from "@/features/products/composition/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +23,6 @@ export default async function AdminRoute() {
     );
   }
 
-  return <AdminPage />;
+  const categories = await categoryManagement.list();
+  return <AdminPage initialCategories={categories} />;
 }

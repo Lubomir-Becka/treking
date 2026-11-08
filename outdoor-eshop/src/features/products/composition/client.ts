@@ -2,3 +2,9 @@ export { fetchProducts } from "@/features/products/infrastructure/ProductApiClie
 export { fetchFavoriteProducts } from "@/features/products/infrastructure/fetchFavoriteProducts";
 export { fetchNavigationCategories } from "@/features/products/infrastructure/CategoryApiClient";
 export type { NavigationCategory } from "@/features/products/infrastructure/CategoryApiClient";
+export {
+  CategoryMutationOutcomeUnknown,
+  fetchAdminCategories,
+  saveAdminCategory,
+  deleteAdminCategory,
+} from "../infrastructure/AdminCategoryApiClient";

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/features/session/composition/client";
+import { CategoryManagement } from "./categories/CategoryManagement";
+import type { AdminCategory } from "@/features/products/domain/CategoryManagement";
 import styles from "./admin.module.css";
 
-export function AdminPage() {
+export function AdminPage({ initialCategories }: { initialCategories: AdminCategory[] }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function AdminPage() {
       <section className={styles.content}>
         <h1>Administrácia</h1>
         <p>Vitajte v administrácii obchodu.</p>
-        <p>Správa produktov a kategórií bude dostupná neskôr.</p>
+        <CategoryManagement initialCategories={initialCategories} />
         {error && <p role="alert">{error}</p>}
       </section>
     </main>
