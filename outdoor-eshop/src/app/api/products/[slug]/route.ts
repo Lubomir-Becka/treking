@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProductDetail } from "@/modules/products/composition";
+import { getProductDetail } from "@/composition/server/products";
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
