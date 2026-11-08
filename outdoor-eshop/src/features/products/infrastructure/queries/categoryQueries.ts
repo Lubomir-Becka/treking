@@ -79,16 +79,7 @@ export async function findCategoriesQuery(
     )
     .where(isNull(categories.parentId))
     .groupBy(categories.id)
-    .orderBy(
-      sql`CASE ${categories.slug}
-        WHEN 'bundy' THEN 0
-        WHEN 'nohavice' THEN 1
-        WHEN 'obuv' THEN 2
-        WHEN 'doplnky' THEN 3
-        ELSE 4
-      END`,
-      asc(categories.name),
-    );
+    .orderBy(asc(categories.name), asc(categories.id));
 
   return rows.map((row) => ({ ...row, productCount: Number(row.productCount) }));
 }

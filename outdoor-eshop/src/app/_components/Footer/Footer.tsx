@@ -12,9 +12,9 @@ export function Footer() {
         </div>
         <div className={styles.column}>
           <span className="eyebrow">Kolekcia</span>
-          <a href="/categories/hardshell-bundy?audience=men">Pánsky hardshell</a>
-          <a href="/categories/bundy?audience=women">Dámska alpinistická séria</a>
-          <a href="/categories/batohy">Expedičné batohy</a>
+          <a href="/collections/men">Pánska kolekcia</a>
+          <a href="/collections/women">Dámska kolekcia</a>
+          <a href="/search">Všetky produkty</a>
         </div>
         <div className={styles.column}>
           <span className="eyebrow">Podpora & servis</span>
