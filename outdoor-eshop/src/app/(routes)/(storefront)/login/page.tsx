@@ -1,5 +1,5 @@
 import { AuthForm } from "@/app/pages/auth/AuthForm";
-import { getSafeNextPath } from "@/app/_utils/safeNextPath";
+import { getSafeNextPath, isAdminDestination } from "@/app/_utils/safeNextPath";
 
 export default async function LoginPage({
   searchParams,
@@ -8,5 +8,11 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const nextPath = getSafeNextPath(params.next);
-  return <AuthForm mode="login" nextPath={nextPath} />;
+  return (
+    <AuthForm
+      mode="login"
+      nextPath={nextPath}
+      loginOnly={isAdminDestination(nextPath)}
+    />
+  );
 }

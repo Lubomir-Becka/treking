@@ -19,3 +19,8 @@ export function getSafeNextPath(value: string | string[] | undefined): string {
 
   return `${destination.pathname}${destination.search}${destination.hash}`;
 }
+
+export function isAdminDestination(path: string): boolean {
+  const destination = new URL(path, INTERNAL_ORIGIN);
+  return destination.pathname === "/admin" || destination.pathname.startsWith("/admin/");
+}

@@ -5,13 +5,18 @@ import { useRouter } from "next/navigation";
 import { authenticate } from "@/features/session/composition/client";
 import styles from "./auth.module.css";
 
-type AuthFormProps = { mode: "login" | "register"; nextPath?: string };
+type AuthFormProps = {
+  mode: "login" | "register";
+  nextPath?: string;
+  loginOnly?: boolean;
+};
 
-export function AuthForm({ mode, nextPath = "/account" }: AuthFormProps) {
+export function AuthForm({ mode, nextPath = "/account", loginOnly = false }: AuthFormProps) {
   const router = useRouter();
   const [activeMode, setActiveMode] = useState(mode);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const isLogin = loginOnly || activeMode === "login";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,7 +26,7 @@ export function AuthForm({ mode, nextPath = "/account" }: AuthFormProps) {
     const payload = Object.fromEntries(form.entries());
 
     try {
-      const role = await authenticate(activeMode, payload);
+      const role = await authenticate(isLogin ? "login" : "register", payload);
       if (role === "customer") {
         window.dispatchEvent(new CustomEvent("vertex-cart-updated"));
       }
@@ -38,38 +43,38 @@ export function AuthForm({ mode, nextPath = "/account" }: AuthFormProps) {
     }
   }
 
-  const isLogin = activeMode === "login";
-
   return (
     <main className={styles.authPage}>
       <span className={styles.kicker}>VERTEX Tatran</span>
-      <h1>Váš účet</h1>
-      <div className={styles.authModes} role="group" aria-label="Spôsob prístupu">
-        <button
-          type="button"
-          disabled={pending}
-          className={isLogin ? styles.authModeActive : ""}
-          aria-pressed={isLogin}
-          onClick={() => {
-            setActiveMode("login");
-            setError(null);
-          }}
-        >
-          Prihlásenie
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          className={!isLogin ? styles.authModeActive : ""}
-          aria-pressed={!isLogin}
-          onClick={() => {
-            setActiveMode("register");
-            setError(null);
-          }}
-        >
-          Registrácia
-        </button>
-      </div>
+      <h1>{loginOnly ? "Prihlásenie do administrácie" : "Váš účet"}</h1>
+      {!loginOnly && (
+        <div className={styles.authModes} role="group" aria-label="Spôsob prístupu">
+          <button
+            type="button"
+            disabled={pending}
+            className={isLogin ? styles.authModeActive : ""}
+            aria-pressed={isLogin}
+            onClick={() => {
+              setActiveMode("login");
+              setError(null);
+            }}
+          >
+            Prihlásenie
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            className={!isLogin ? styles.authModeActive : ""}
+            aria-pressed={!isLogin}
+            onClick={() => {
+              setActiveMode("register");
+              setError(null);
+            }}
+          >
+            Registrácia
+          </button>
+        </div>
+      )}
       <form className={styles.authForm} onSubmit={submit}>
         {!isLogin && (
           <>
