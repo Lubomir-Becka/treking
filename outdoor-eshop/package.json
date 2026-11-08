@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "test": "node --import tsx --test $(find src -name '*.test.ts' -print) scripts/architecture-rules.test.mjs",
+    "test:categories:integration": "node scripts/test-categories-integration.mjs",
+    "test:categories:ui": "CATEGORY_UI_TEST=1 node scripts/test-categories-integration.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
@@ -33,6 +35,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "^15.5.29",
+    "playwright": "^1.65.0",
     "tailwindcss": "^4",
     "tsx": "^4",
     "typescript": "^5"
