@@ -1,0 +1,103 @@
+.section {
+  padding-bottom: 75px;
+}
+
+.heading {
+  border-bottom: 1px solid #d9dad7;
+  padding-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 16px;
+}
+
+.grid article {
+  background: #fff;
+  border: 1px solid #d9dad7;
+  min-height: 135px;
+  padding: 18px;
+}
+
+.grid article > span {
+  color: #1b382b;
+  display: block;
+  font-size: 16px;
+}
+
+.grid small {
+  color: #66736d;
+  display: block;
+  font-size: 9px;
+  margin-top: 12px;
+  text-transform: uppercase;
+}
+
+.grid strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.2;
+  margin-top: 8px;
+}
+
+.accordions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 16px;
+}
+
+.accordions details {
+  background: #fff;
+  border: 1px solid #d9dad7;
+  padding: 18px;
+}
+
+.accordions summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  list-style: none;
+  text-transform: uppercase;
+}
+
+.accordions summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordions summary span {
+  color: #1b382b;
+  float: right;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.accordions p {
+  color: #66736d;
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 14px 0 0;
+}
+
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .accordions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .grid article {
+    min-height: 122px;
+    padding: 12px;
+  }
+
+  .grid strong {
+    font-size: 12px;
+  }
+}
