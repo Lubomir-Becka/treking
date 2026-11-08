@@ -28,19 +28,8 @@ export type CustomerOrderDetail = CustomerOrder & {
   }>;
 };
 
-export type CustomerAddress = {
-  label: string | null;
-  recipientName: string;
-  street: string;
-  city: string;
-  postalCode: string;
-  country: string | null;
-  isDefault: boolean | null;
-};
-
 export type CustomerAccountData = {
   orders: CustomerOrder[];
-  addresses: CustomerAddress[];
 };
 
 export type CustomerProfile = {

@@ -1,63 +1,32 @@
-import type { FavoriteColorRepository } from "@/features/customer/domain/FavoriteColorRepository";
-
-const FAVORITE_COLORS_KEY = "vertex-favorite-colors";
-const FAVORITE_COLORS_CHANGED = "vertex-favorite-colors-changed";
-
-export function parseFavoriteColorIds(value: string | null): number[] {
-  if (!value) {
-    return [];
+async function request(path: string, method: "GET" | "PUT" | "DELETE") {
+  const response = await fetch(path, { method, cache: "no-store" });
+  if (!response.ok) {
+    if (response.status === 401) throw new Error("Prihláste sa do svojho účtu.");
+    throw new Error("Obľúbené položky sa nepodarilo spracovať.");
   }
+  return response.json() as Promise<unknown>;
+}
 
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
+export async function fetchFavoriteColorIds(): Promise<number[]> {
+  const payload = await request("/api/account/favorites", "GET");
+  if (
+    typeof payload !== "object" || payload === null || !("data" in payload) ||
+    !Array.isArray(payload.data) ||
+    !payload.data.every((id: unknown) =>
+      typeof id === "number" && Number.isInteger(id) && id > 0 && id <= 2_147_483_647)
+  ) {
+    throw new Error("Odpoveď obľúbených položiek nie je platná.");
+  }
+  return payload.data;
+}
 
-    return Array.from(
-      new Set(
-        parsed.filter(
-          (id): id is number =>
-            Number.isSafeInteger(id) && typeof id === "number" && id > 0,
-        ),
-      ),
-    );
-  } catch {
-    return [];
+export async function changeFavoriteColor(colorId: number, add: boolean): Promise<void> {
+  const payload = await request(`/api/account/favorites/${colorId}`, add ? "PUT" : "DELETE");
+  if (
+    typeof payload !== "object" || payload === null || !("data" in payload) ||
+    typeof payload.data !== "object" || payload.data === null ||
+    !("success" in payload.data) || payload.data.success !== true
+  ) {
+    throw new Error("Výsledok zmeny obľúbených položiek nie je známy.");
   }
 }
-
-export function getFavoriteColorIds(): number[] {
-  return parseFavoriteColorIds(
-    window.localStorage.getItem(FAVORITE_COLORS_KEY),
-  );
-}
-
-export function setFavoriteColor(
-  colorId: number,
-  shouldBeFavorite: boolean,
-): number[] {
-  const favoriteIds = getFavoriteColorIds();
-  const nextIds = shouldBeFavorite
-    ? Array.from(new Set([...favoriteIds, colorId]))
-    : favoriteIds.filter((id) => id !== colorId);
-
-  window.localStorage.setItem(FAVORITE_COLORS_KEY, JSON.stringify(nextIds));
-  window.dispatchEvent(new Event(FAVORITE_COLORS_CHANGED));
-
-  return nextIds;
-}
-
-export const localStorageFavoriteColorRepository: FavoriteColorRepository = {
-  getFavoriteColorIds,
-  setFavoriteColor,
-  subscribe(listener) {
-    const handleChange = () => listener();
-    window.addEventListener(FAVORITE_COLORS_CHANGED, handleChange);
-    window.addEventListener("storage", handleChange);
-    return () => {
-      window.removeEventListener(FAVORITE_COLORS_CHANGED, handleChange);
-      window.removeEventListener("storage", handleChange);
-    };
-  },
-};

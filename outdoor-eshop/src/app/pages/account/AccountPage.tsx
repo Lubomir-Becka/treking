@@ -27,15 +27,6 @@ export function AccountPage({
   user: CustomerProfile;
   accountData: CustomerAccountData;
 }) {
-  const fullName = `${user.firstName} ${user.lastName}`;
-  const defaultAddress =
-    accountData.addresses.find((address) => address.isDefault) ??
-    accountData.addresses[0];
-  const stats = [
-    ["Objednávky", String(accountData.orders.length), "Celkovo"],
-    ["Uložené adresy", String(accountData.addresses.length), "V profile"],
-  ];
-
   return (
     <main className={styles.page}>
       <nav className={styles.breadcrumbs} aria-label="Drobková navigácia">
@@ -45,28 +36,11 @@ export function AccountPage({
         <span>/</span>
         <span>Prehľad profilu</span>
       </nav>
-      <section className={styles.accountHero}>
-        <div>
-          <span className={styles.kicker}>Overený účet ✓</span>
-          <h1>{fullName}</h1>
-          <p>{user.email}</p>
-          <span className={styles.securityBadge}>● Účet je aktívny</span>
-        </div>
-        <div className={styles.stats}>
-          {stats.map(([label, value, detail]) => (
-            <div className={styles.stat} key={label}>
-              <span>{label}</span><strong>{value}</strong><small>{detail}</small>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <div className={styles.accountLayout}>
         <aside className={styles.sidebar}>
           <nav aria-label="Navigácia účtu">
             <Link className={styles.activeNav} href="/account">Prehľad profilu</Link>
             <Link href="/account#orders">História objednávok <b>{accountData.orders.length}</b></Link>
-            <Link href="/account#addresses">Uložené adresy <b>{accountData.addresses.length}</b></Link>
           </nav>
         </aside>
 
@@ -94,16 +68,6 @@ export function AccountPage({
               </ul>
             ) : (
               <p>Zatiaľ nemáte žiadne objednávky.</p>
-            )}
-          </article>
-
-          <article className={styles.dashboardCard} id="addresses">
-            <span className={styles.kicker}>Doručovanie</span>
-            <h2>Uložené adresy</h2>
-            {defaultAddress ? (
-              <p>{defaultAddress.recipientName}<br />{defaultAddress.street}<br />{defaultAddress.postalCode} {defaultAddress.city}</p>
-            ) : (
-              <p>Zatiaľ nemáte uloženú žiadnu adresu.</p>
             )}
           </article>
         </section>

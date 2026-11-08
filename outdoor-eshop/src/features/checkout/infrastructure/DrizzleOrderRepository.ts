@@ -8,11 +8,9 @@ import {
   carts,
   orders,
   orderItems,
-  payments,
   productColors,
   productVariants,
   products,
-  shipping,
   shippingMethods,
 } from "../../../../drizzle/schema";
 import type {
@@ -67,7 +65,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       );
       const [shippingMethod] = await tx
         .select({
-          id: shippingMethods.id,
+          name: shippingMethods.name,
           price: shippingMethods.price,
           freeFromAmount: shippingMethods.freeFromAmount,
         })
@@ -97,6 +95,8 @@ export class DrizzleOrderRepository implements OrderRepository {
         orderNumber,
         itemsSubtotal: subtotal.toFixed(2),
         shippingCost: shippingCost.toFixed(2),
+        shippingMethod: shippingMethod.name,
+        paymentMethod: input.paymentMethod,
         totalPrice: totalPrice.toFixed(2),
         shippingRecipient: `${input.firstName.trim()} ${input.lastName.trim()}`,
         shippingStreet: input.street.trim(),
@@ -131,17 +131,6 @@ export class DrizzleOrderRepository implements OrderRepository {
         });
       }
 
-      await tx.insert(shipping).values({
-        orderId: order.id,
-        shippingMethodId: shippingMethod.id,
-        shippingCost: shippingCost.toFixed(2),
-      });
-      await tx.insert(payments).values({
-        orderId: order.id,
-        paymentMethod: input.paymentMethod,
-        amount: totalPrice.toFixed(2),
-        status: "pending",
-      });
       await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id));
 
       return { orderNumber, totalPrice };

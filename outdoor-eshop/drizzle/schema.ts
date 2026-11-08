@@ -53,26 +53,6 @@ export const guestSessions = pgTable("guest_sessions", {
 	index("idx_guest_sessions_token_hash").using("btree", table.tokenHash.asc().nullsLast().op("text_ops")),
 ]);
 
-export const addresses = pgTable("addresses", {
-	id: serial().primaryKey().notNull(),
-	userId: integer("user_id").notNull(),
-	recipientName: varchar("recipient_name", { length: 100 }).notNull(),
-	street: varchar({ length: 150 }).notNull(),
-	city: varchar({ length: 100 }).notNull(),
-	postalCode: varchar("postal_code", { length: 20 }).notNull(),
-	country: varchar({ length: 50 }).default('SK'),
-	addressLabel: varchar("address_label", { length: 50 }),
-	isDefault: boolean("is_default").default(false),
-}, (table) => [
-	index("idx_addresses_user_id").using("btree", table.userId.asc().nullsLast().op("int4_ops")),
-	uniqueIndex("unique_default_address_per_user").using("btree", table.userId.asc().nullsLast().op("int4_ops")).where(sql`(is_default = true)`),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "addresses_user_id_fkey"
-		}).onDelete("cascade"),
-]);
-
 export const categories = pgTable("categories", {
 	id: serial().primaryKey().notNull(),
 	name: varchar({ length: 100 }).notNull(),
@@ -202,7 +182,7 @@ export const productVariants = pgTable("product_variants", {
 export const favorites = pgTable("favorites", {
 	id: serial().primaryKey().notNull(),
 	userId: integer("user_id").notNull(),
-	productId: integer("product_id").notNull(),
+	productColorId: integer("product_color_id").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
 	index("idx_favorites_user_id").using("btree", table.userId.asc().nullsLast().op("int4_ops")),
@@ -212,11 +192,11 @@ export const favorites = pgTable("favorites", {
 			name: "favorites_user_id_fkey"
 		}).onDelete("cascade"),
 	foreignKey({
-			columns: [table.productId],
-			foreignColumns: [products.id],
-			name: "favorites_product_id_fkey"
+			columns: [table.productColorId],
+			foreignColumns: [productColors.id],
+			name: "favorites_product_color_id_fkey"
 		}).onDelete("cascade"),
-	unique("unique_user_product_favorite").on(table.userId, table.productId),
+	unique("unique_user_color_favorite").on(table.userId, table.productColorId),
 ]);
 
 export const carts = pgTable("carts", {
@@ -292,6 +272,8 @@ export const orders = pgTable("orders", {
 	orderNumber: varchar("order_number", { length: 50 }).notNull(),
 	itemsSubtotal: numeric("items_subtotal", { precision: 10, scale:  2 }).notNull(),
 	shippingCost: numeric("shipping_cost", { precision: 10, scale:  2 }).notNull(),
+	shippingMethod: varchar("shipping_method", { length: 100 }),
+	paymentMethod: varchar("payment_method", { length: 50 }),
 	totalPrice: numeric("total_price", { precision: 10, scale:  2 }).notNull(),
 	status: varchar({ length: 30 }).default('pending'),
 	shippingRecipient: varchar("shipping_recipient", { length: 100 }).notNull(),
@@ -317,51 +299,6 @@ export const orders = pgTable("orders", {
 	check("orders_total_price_check", sql`total_price >= (0)::numeric`),
 	check("orders_status_check", sql`(status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'shipped'::character varying, 'delivered'::character varying, 'cancelled'::character varying])::text[])`),
 	check("valid_order_total_check", sql`total_price = (items_subtotal + shipping_cost)`),
-]);
-
-export const payments = pgTable("payments", {
-	id: serial().primaryKey().notNull(),
-	orderId: integer("order_id").notNull(),
-	paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
-	amount: numeric({ precision: 10, scale:  2 }).notNull(),
-	status: varchar({ length: 30 }).default('pending'),
-	transactionId: varchar("transaction_id", { length: 100 }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [
-	index("idx_payments_order_id").using("btree", table.orderId.asc().nullsLast().op("int4_ops")),
-	foreignKey({
-			columns: [table.orderId],
-			foreignColumns: [orders.id],
-			name: "payments_order_id_fkey"
-		}).onDelete("cascade"),
-	check("payments_payment_method_check", sql`(payment_method)::text = ANY ((ARRAY['card'::character varying, 'bank_transfer'::character varying, 'cod'::character varying])::text[])`),
-	check("payments_amount_check", sql`amount >= (0)::numeric`),
-	check("payments_status_check", sql`(status)::text = ANY ((ARRAY['pending'::character varying, 'paid'::character varying, 'failed'::character varying, 'refunded'::character varying])::text[])`),
-]);
-
-export const shipping = pgTable("shipping", {
-	id: serial().primaryKey().notNull(),
-	orderId: integer("order_id").notNull(),
-	shippingMethodId: integer("shipping_method_id").notNull(),
-	shippingCost: numeric("shipping_cost", { precision: 10, scale:  2 }).notNull(),
-	trackingNumber: varchar("tracking_number", { length: 100 }),
-	status: varchar({ length: 30 }).default('preparing'),
-	shippedAt: timestamp("shipped_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [
-	index("idx_shipping_order_id").using("btree", table.orderId.asc().nullsLast().op("int4_ops")),
-	foreignKey({
-			columns: [table.orderId],
-			foreignColumns: [orders.id],
-			name: "shipping_order_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.shippingMethodId],
-			foreignColumns: [shippingMethods.id],
-			name: "shipping_shipping_method_id_fkey"
-		}).onDelete("restrict"),
-	check("shipping_shipping_cost_check", sql`shipping_cost >= (0)::numeric`),
-	check("shipping_status_check", sql`(status)::text = ANY ((ARRAY['preparing'::character varying, 'shipped'::character varying, 'in_transit'::character varying, 'delivered'::character varying, 'returned'::character varying])::text[])`),
 ]);
 
 export const shippingMethods = pgTable("shipping_methods", {

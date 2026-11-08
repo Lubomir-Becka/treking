@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { resolveActor } from "@/shared/composition/server";
+import { FavoritesProvider } from "@/app/_components/customer/FavoritesProvider";
 
 export default async function StorefrontLayout({
   children,
@@ -12,5 +13,12 @@ export default async function StorefrontLayout({
     redirect("/admin");
   }
 
-  return children;
+  return (
+    <FavoritesProvider
+      key={actor.type === "authenticated" ? actor.userId : "guest"}
+      authenticated={actor.type === "authenticated" && actor.role === "customer"}
+    >
+      {children}
+    </FavoritesProvider>
+  );
 }

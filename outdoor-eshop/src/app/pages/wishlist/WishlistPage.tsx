@@ -6,38 +6,18 @@ import { useEffect, useMemo, useState } from "react";
 import { CustomerFavoriteButton } from "@/app/_components/customer/client";
 import { fetchFavoriteProducts } from "@/features/products/composition/client";
 import type { CatalogProductDto } from "@/features/products/contracts/products";
-import { customerFavorites } from "@/features/customer/composition/favorites";
+import { useFavorites } from "@/app/_components/customer/FavoritesProvider";
 import styles from "./wishlist.module.css";
 
 export function WishlistPage() {
   const [products, setProducts] = useState<CatalogProductDto[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
+  const { authenticated, ids: favoriteIds, busy, error, reload } = useFavorites();
   const [isLoading, setIsLoading] = useState(true);
-  const [storageError, setStorageError] = useState<string | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    let active = true;
-
-    function updateFavorites() {
-      try {
-        setFavoriteIds(customerFavorites.getFavoriteColorIds());
-        setStorageError(null);
-      } catch {
-        setStorageError("Obľúbené položky sa nepodarilo načítať z tohto zariadenia.");
-      }
-    }
-
-    updateFavorites();
-    const unsubscribe = customerFavorites.subscribe(updateFavorites);
-
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
+    if (!authenticated || busy || error) return;
     let active = true;
     const controller = new AbortController();
     setIsLoading(true);
@@ -66,7 +46,7 @@ export function WishlistPage() {
       active = false;
       controller.abort();
     };
-  }, [favoriteIds]);
+  }, [favoriteIds, authenticated, busy, error, retryCount]);
 
   const favoriteProducts = useMemo(
     () => products.filter((product) => favoriteIds.includes(product.colorId)),
@@ -88,11 +68,26 @@ export function WishlistPage() {
         </div>
       </section>
 
-      {storageError || productsError ? (
-        <section className={styles.wishlistEmpty} role="alert">
-          <p>{storageError ?? productsError}</p>
+      {!authenticated ? (
+        <section className={styles.wishlistEmpty}>
+          <p>Pre uloženie obľúbených produktov sa prihláste.</p>
+          <Link className={styles.primaryButton} href="/login?next=%2Fwishlist">
+            Prihlásiť sa
+          </Link>
         </section>
-      ) : isLoading ? (
+      ) : error ? (
+        <section className={styles.wishlistEmpty} role="alert">
+          <p>{error}</p>
+          <button type="button" disabled={busy} onClick={() => void reload()}>Obnoviť</button>
+        </section>
+      ) : productsError ? (
+        <section className={styles.wishlistEmpty} role="alert">
+          <p>{productsError}</p>
+          <button type="button" onClick={() => setRetryCount((count) => count + 1)}>
+            Obnoviť
+          </button>
+        </section>
+      ) : busy || isLoading ? (
         <section className={styles.wishlistEmpty} role="status">
           <p>Načítavame obľúbené položky…</p>
         </section>

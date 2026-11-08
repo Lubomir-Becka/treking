@@ -72,6 +72,9 @@ try {
   const databaseUrl = `postgres://postgres:test-password@127.0.0.1:${port}/category_integration`;
   sql = postgres(databaseUrl, { max: 1, connect_timeout: 2 });
   await waitForDatabase(sql);
+  await sql`create database favorites_migration`;
+  const { testFavoritesMigration } = await import("./test-favorites-migration.mjs");
+  await testFavoritesMigration(port);
   command("npm", ["run", "db:migrate"], {
     env: { ...process.env, DATABASE_URL: databaseUrl },
   });
@@ -233,23 +236,55 @@ try {
   const [color] = await sql`
     insert into product_colors (product_id, color_name) values (${product.id}, 'Black') returning id
   `;
+  const [secondColor] = await sql`
+    insert into product_colors (product_id, color_name) values (${product.id}, 'Blue') returning id
+  `;
   const [variant] = await sql`
     insert into product_variants (product_color_id, sku, size, price, stock)
     values (${color.id}, 'test-order-sku', 'M', 10, 10) returning id
   `;
+  await sql`
+    insert into product_images (product_color_id, image_url, is_primary)
+    values (${color.id}, '/test-image.jpg', true)
+  `;
+  const favoritesPath = "/api/account/favorites";
+  const favoriteColor = `${favoritesPath}/${color.id}`;
+  for (const [method, target] of [
+    ["GET", favoritesPath],
+    ["PUT", favoriteColor],
+    ["DELETE", favoriteColor],
+  ]) {
+    assert.equal((await request(method, target)).status, 401);
+    assert.equal((await request(method, target, admin)).status, 403);
+  }
+  assert.equal((await request("PUT", favoriteColor, customer, undefined, "http://evil.example")).status, 403);
+  assert.equal((await request("PUT", `${favoritesPath}/2147483648`, customer)).status, 400);
+  assert.equal((await request("PUT", `${favoritesPath}/2147483647`, customer)).status, 404);
+  assert.equal((await request("PUT", favoriteColor, customer)).status, 200);
+  assert.equal((await request("PUT", favoriteColor, customer)).status, 200);
+  assert.equal((await request("PUT", `${favoritesPath}/${secondColor.id}`, customer)).status, 200);
+  assert.deepEqual(
+    (await (await request("GET", favoritesPath, customer)).json()).data.sort((a, b) => a - b),
+    [color.id, secondColor.id].sort((a, b) => a - b),
+  );
+  assert.deepEqual((await (await request("GET", favoritesPath, otherCustomer)).json()).data, []);
+  assert.equal((await request("DELETE", favoriteColor, otherCustomer)).status, 200);
+  assert.equal((await (await request("GET", favoritesPath, customer)).json()).data.length, 2);
+  assert.equal((await request("DELETE", favoriteColor, customer)).status, 200);
+  assert.equal((await request("DELETE", `${favoritesPath}/${secondColor.id}`, customer)).status, 200);
+  assert.deepEqual((await (await request("GET", favoritesPath, customer)).json()).data, []);
+  await sql`update products set is_active = false where id = ${product.id}`;
+  assert.equal((await request("PUT", favoriteColor, customer)).status, 404);
+  await sql`update products set is_active = true where id = ${product.id}`;
+  if (process.env.CATEGORY_UI_TEST === "1") {
+    const { testFavoritesUi } = await import("./test-favorites-ui.mjs");
+    await testFavoritesUi(base, customer, otherCustomer);
+  }
   const [order] = await sql`
     insert into orders (user_id, customer_email, order_number, items_subtotal, shipping_cost,
-      total_price, shipping_recipient, shipping_street, shipping_city, shipping_postal_code, shipping_phone)
+      total_price, shipping_method, shipping_recipient, shipping_street, shipping_city, shipping_postal_code, shipping_phone)
     values (${customerUser.id}, 'customer@integration.test', 'TEST-ORDER-1', 30, 2, 32,
-      'Test User', 'Test Street', 'Test City', '12345', '123456789') returning id
-  `;
-  const [delivery] = await sql`
-    insert into shipping_methods (code, name, price)
-    values ('courier', 'Test Courier', 2) returning id
-  `;
-  await sql`
-    insert into shipping (order_id, shipping_method_id, shipping_cost)
-    values (${order.id}, ${delivery.id}, 2)
+      'Test Courier', 'Test User', 'Test Street', 'Test City', '12345', '123456789') returning id
   `;
   await sql`
     insert into order_items (order_id, product_variant_id, product_name, sku, color_name, size, quantity, unit_price)
@@ -265,6 +300,7 @@ try {
   const account = await request("GET", "/account", customer);
   const accountHtml = await account.text();
   assert.equal(account.status, 200);
+  assert.doesNotMatch(accountHtml, /Overený účet|Účet je aktívny/);
   assert.match(accountHtml, /TEST-ORDER-1/);
   assert.match(accountHtml, /TEST-ORDER-2/);
   const detail = await request("GET", "/account/orders/TEST-ORDER-1", customer);
@@ -275,6 +311,32 @@ try {
   assert.match(detailHtml, /Test Courier/);
   assert.equal((await request("GET", "/account/orders/TEST-ORDER-1", otherCustomer)).status, 404);
   assert.equal((await request("GET", "/account/orders/TEST-ORDER-1")).url.includes("/login"), true);
+  await sql`insert into shipping_methods (code, name, price) values ('courier', 'New Courier', 2)`;
+  const [cart] = await sql`
+    insert into carts (user_id) values (${customerUser.id})
+    on conflict (user_id) do update set user_id = excluded.user_id returning id
+  `;
+  await sql`insert into cart_items (cart_id, product_variant_id, quantity) values (${cart.id}, ${variant.id}, 1)`;
+  const checkout = await request("POST", "/api/orders", customer, {
+    email: "customer@integration.test",
+    firstName: "Test",
+    lastName: "User",
+    street: "Test Street",
+    city: "Test City",
+    postalCode: "12345",
+    phone: "123456789",
+    country: "SK",
+    shippingMethod: "courier",
+    paymentMethod: "cod",
+  });
+  assert.equal(checkout.status, 201, await checkout.clone().text());
+  const createdNumber = (await checkout.json()).data.orderNumber;
+  const [createdOrder] = await sql`
+    select shipping_method, payment_method from orders where order_number = ${createdNumber}
+  `;
+  assert.equal(createdOrder.shipping_method, "New Courier");
+  assert.equal(createdOrder.payment_method, "cod");
+  assert.match(await (await request("GET", `/account/orders/${createdNumber}`, customer)).text(), /New Courier/);
   console.log("Category API integration tests passed.");
 } catch (error) {
   console.error(error);

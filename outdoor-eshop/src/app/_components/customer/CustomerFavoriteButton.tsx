@@ -1,51 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { FavoriteButton } from "@/app/_components/FavoriteButton/FavoriteButton";
-import { customerFavorites } from "@/features/customer/composition/favorites";
+import { useFavorites } from "./FavoritesProvider";
 import styles from "./favorite-error.module.css";
 
-export function CustomerFavoriteButton({
-  colorId,
-  className,
-}: {
-  colorId: number;
-  className?: string;
-}) {
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function CustomerFavoriteButton({ colorId, className }: { colorId: number; className?: string }) {
+  const { authenticated, ids, busy, error, reload, toggle } = useFavorites();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  useEffect(() => {
-    function updateFavoriteState() {
-      try {
-        setIsFavorite(customerFavorites.getFavoriteColorIds().includes(colorId));
-        setError(null);
-      } catch {
-        setError("Obľúbené položky sa nepodarilo načítať.");
-      }
+  function onToggle() {
+    if (!authenticated) {
+      router.push(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
+      return;
     }
-
-    updateFavoriteState();
-    return customerFavorites.subscribe(updateFavoriteState);
-  }, [colorId]);
-
-  function toggleFavorite() {
-    try {
-      customerFavorites.setFavoriteColor(colorId, !isFavorite);
-      setError(null);
-    } catch {
-      setError("Obľúbené položky sa nepodarilo uložiť.");
-    }
+    void toggle(colorId);
   }
 
   return (
     <>
       <FavoriteButton
-        isFavorite={isFavorite}
-        onToggle={toggleFavorite}
+        isFavorite={ids.includes(colorId)}
+        onToggle={onToggle}
         className={className}
+        disabled={authenticated && (busy || Boolean(error))}
       />
-      {error && <span className={styles.favoriteError} role="alert">{error}</span>}
+      {error && (
+        <span className={styles.favoriteError} role="alert">
+          {error}{" "}
+          <button type="button" disabled={busy} onClick={() => void reload()}>Obnoviť</button>{" "}
+          {error.includes("Prihláste") && <Link href="/login">Prihlásiť sa</Link>}
+        </span>
+      )}
     </>
   );
 }

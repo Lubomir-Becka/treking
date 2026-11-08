@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/shared/db/client";
-import { addresses, orderItems, orders, shipping, shippingMethods } from "../../../../drizzle/schema";
+import { orderItems, orders } from "../../../../drizzle/schema";
 import type {
   CustomerAccountData,
   CustomerAccountRepository,
@@ -17,16 +17,6 @@ export class DrizzleCustomerAccountRepository implements CustomerAccountReposito
     }).from(orders).where(eq(orders.userId, userId))
       .orderBy(desc(orders.createdAt), desc(orders.id));
 
-    const storedAddresses = await db.select({
-      label: addresses.addressLabel,
-      recipientName: addresses.recipientName,
-      street: addresses.street,
-      city: addresses.city,
-      postalCode: addresses.postalCode,
-      country: addresses.country,
-      isDefault: addresses.isDefault,
-    }).from(addresses).where(eq(addresses.userId, userId));
-
     return {
       orders: storedOrders.map((order) => ({
         ...order,
@@ -34,7 +24,6 @@ export class DrizzleCustomerAccountRepository implements CustomerAccountReposito
         totalPrice: Number(order.totalPrice),
         createdAt: order.createdAt ? new Date(order.createdAt) : null,
       })),
-      addresses: storedAddresses,
     };
   }
 
@@ -44,8 +33,7 @@ export class DrizzleCustomerAccountRepository implements CustomerAccountReposito
       .limit(1);
     if (!order) return null;
 
-    const [items, shipment] = await Promise.all([
-      db.select({
+    const items = await db.select({
         id: orderItems.id,
         productName: orderItems.productName,
         sku: orderItems.sku,
@@ -53,11 +41,7 @@ export class DrizzleCustomerAccountRepository implements CustomerAccountReposito
         size: orderItems.size,
         quantity: orderItems.quantity,
         unitPrice: orderItems.unitPrice,
-      }).from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(asc(orderItems.id)),
-      db.select({ name: shippingMethods.name }).from(shipping)
-        .innerJoin(shippingMethods, eq(shipping.shippingMethodId, shippingMethods.id))
-        .where(eq(shipping.orderId, order.id)).orderBy(asc(shipping.id)).limit(1),
-    ]);
+      }).from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(asc(orderItems.id));
 
     return {
       orderNumber: order.orderNumber,
@@ -74,7 +58,7 @@ export class DrizzleCustomerAccountRepository implements CustomerAccountReposito
       note: order.note,
       itemsSubtotal: Number(order.itemsSubtotal),
       shippingCost: Number(order.shippingCost),
-      shippingMethod: shipment[0]?.name ?? null,
+      shippingMethod: order.shippingMethod,
       items: items.map((item) => ({ ...item, unitPrice: Number(item.unitPrice) })),
     };
   }
