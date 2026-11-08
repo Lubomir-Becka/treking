@@ -108,6 +108,7 @@
 .cardTitle { align-items: start; display: flex; gap: 18px; justify-content: space-between; }
 .cardTitle > span { color: #76827c; font-size: 10px; line-height: 1.6; text-align: right; text-transform: uppercase; }
 .shipment { align-items: center; background: #f7faf7; display: flex; gap: 16px; padding: 12px; }
+.orderList { display: grid; gap: 12px; list-style: none; }
 .shipment img { object-fit: contain; }
 .shipment div { display: grid; gap: 6px; margin-right: auto; }
 .shipment div span { color: #748078; font-size: 11px; }

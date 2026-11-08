@@ -28,7 +28,6 @@ export function AccountPage({
   accountData: CustomerAccountData;
 }) {
   const fullName = `${user.firstName} ${user.lastName}`;
-  const latestOrder = accountData.orders[0];
   const defaultAddress =
     accountData.addresses.find((address) => address.isDefault) ??
     accountData.addresses[0];
@@ -77,20 +76,22 @@ export function AccountPage({
             <div className={styles.cardTitle}>
               <div><span className={styles.kicker}>Objednávky</span><h2>Moje objednávky</h2></div>
             </div>
-            {latestOrder ? (
-              <div className={styles.shipment}>
-                {latestOrder.item?.imageUrl && (
-                  <img src={latestOrder.item.imageUrl} alt="" width={90} height={90} />
-                )}
-                <div>
-                  <strong>{latestOrder.orderNumber}</strong>
-                  <span>{formatStatus(latestOrder.status)}</span>
-                  {latestOrder.item && (
-                    <span>{latestOrder.item.productName} · {latestOrder.item.colorName ?? "Bez farby"}</span>
-                  )}
-                </div>
-                <strong>{formatPrice(latestOrder.totalPrice)}</strong>
-              </div>
+            {accountData.orders.length > 0 ? (
+              <ul className={styles.orderList}>
+                {accountData.orders.map((order) => (
+                  <li key={order.orderNumber}>
+                    <Link className={styles.shipment} href={`/account/orders/${encodeURIComponent(order.orderNumber)}`}>
+                      <div>
+                        <strong>{order.orderNumber}</strong>
+                        <span>{formatStatus(order.status)}</span>
+                        {order.createdAt && <span>{order.createdAt.toLocaleDateString("sk-SK")}</span>}
+                      </div>
+                      <strong>{formatPrice(order.totalPrice)}</strong>
+                      <span>Detail objednávky →</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p>Zatiaľ nemáte žiadne objednávky.</p>
             )}

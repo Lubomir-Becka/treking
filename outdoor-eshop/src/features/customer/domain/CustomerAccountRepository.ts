@@ -3,12 +3,29 @@ export type CustomerOrder = {
   status: string;
   totalPrice: number;
   createdAt: Date | null;
-  item: {
+};
+
+export type CustomerOrderDetail = CustomerOrder & {
+  customerEmail: string;
+  recipient: string;
+  street: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  note: string | null;
+  itemsSubtotal: number;
+  shippingCost: number;
+  shippingMethod: string | null;
+  items: Array<{
+    id: number;
     productName: string;
+    sku: string;
     colorName: string | null;
     size: string | null;
-    imageUrl: string | null;
-  } | null;
+    quantity: number;
+    unitPrice: number;
+  }>;
 };
 
 export type CustomerAddress = {
@@ -35,4 +52,5 @@ export type CustomerProfile = {
 
 export interface CustomerAccountRepository {
   getAccountData(userId: number): Promise<CustomerAccountData>;
+  getOrderDetail(userId: number, orderNumber: string): Promise<CustomerOrderDetail | null>;
 }

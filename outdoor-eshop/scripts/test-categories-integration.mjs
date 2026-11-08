@@ -76,12 +76,12 @@ try {
     env: { ...process.env, DATABASE_URL: databaseUrl },
   });
 
-  async function createSession(role) {
+  async function createSession(role, email = `${role}@integration.test`) {
     const token = randomBytes(32).toString("hex");
     const hash = createHash("sha256").update(token).digest("hex");
     const [user] = await sql`
       insert into users (first_name, last_name, email, password_hash, role)
-      values ('Test', 'User', ${`${role}@integration.test`}, 'unused', ${role})
+      values ('Test', 'User', ${email}, 'unused', ${role})
       returning id
     `;
     await sql`
@@ -93,6 +93,7 @@ try {
 
   const admin = await createSession("admin");
   const customer = await createSession("customer");
+  const otherCustomer = await createSession("customer", "other@integration.test");
   const appPort = await unusedPort();
   const base = `http://127.0.0.1:${appPort}`;
   server = spawn("./node_modules/.bin/next", ["start", "-H", "127.0.0.1", "-p", String(appPort)], {
@@ -223,6 +224,57 @@ try {
     request("PUT", `${path}/${b.id}`, admin, { name: b.name, slug: b.slug, parentId: a.id }),
   ]);
   assert.deepEqual(concurrent.map((response) => response.status).sort(), [200, 400]);
+
+  const [customerUser] = await sql`select id from users where email = 'customer@integration.test'`;
+  const [product] = await sql`
+    insert into products (name, slug, brand) values ('Order Product', 'order-product', 'Test')
+    returning id
+  `;
+  const [color] = await sql`
+    insert into product_colors (product_id, color_name) values (${product.id}, 'Black') returning id
+  `;
+  const [variant] = await sql`
+    insert into product_variants (product_color_id, sku, size, price, stock)
+    values (${color.id}, 'test-order-sku', 'M', 10, 10) returning id
+  `;
+  const [order] = await sql`
+    insert into orders (user_id, customer_email, order_number, items_subtotal, shipping_cost,
+      total_price, shipping_recipient, shipping_street, shipping_city, shipping_postal_code, shipping_phone)
+    values (${customerUser.id}, 'customer@integration.test', 'TEST-ORDER-1', 30, 2, 32,
+      'Test User', 'Test Street', 'Test City', '12345', '123456789') returning id
+  `;
+  const [delivery] = await sql`
+    insert into shipping_methods (code, name, price)
+    values ('courier', 'Test Courier', 2) returning id
+  `;
+  await sql`
+    insert into shipping (order_id, shipping_method_id, shipping_cost)
+    values (${order.id}, ${delivery.id}, 2)
+  `;
+  await sql`
+    insert into order_items (order_id, product_variant_id, product_name, sku, color_name, size, quantity, unit_price)
+    values (${order.id}, ${variant.id}, 'First item', 'first', 'Black', 'M', 1, 10),
+      (${order.id}, ${variant.id}, 'Second item', 'second', 'Black', 'M', 2, 10)
+  `;
+  await sql`
+    insert into orders (user_id, customer_email, order_number, items_subtotal, shipping_cost,
+      total_price, shipping_recipient, shipping_street, shipping_city, shipping_postal_code, shipping_phone)
+    values (${customerUser.id}, 'customer@integration.test', 'TEST-ORDER-2', 0, 0, 0,
+      'Test User', 'Test Street', 'Test City', '12345', '123456789')
+  `;
+  const account = await request("GET", "/account", customer);
+  const accountHtml = await account.text();
+  assert.equal(account.status, 200);
+  assert.match(accountHtml, /TEST-ORDER-1/);
+  assert.match(accountHtml, /TEST-ORDER-2/);
+  const detail = await request("GET", "/account/orders/TEST-ORDER-1", customer);
+  const detailHtml = await detail.text();
+  assert.equal(detail.status, 200);
+  assert.match(detailHtml, /First item/);
+  assert.match(detailHtml, /Second item/);
+  assert.match(detailHtml, /Test Courier/);
+  assert.equal((await request("GET", "/account/orders/TEST-ORDER-1", otherCustomer)).status, 404);
+  assert.equal((await request("GET", "/account/orders/TEST-ORDER-1")).url.includes("/login"), true);
   console.log("Category API integration tests passed.");
 } catch (error) {
   console.error(error);
