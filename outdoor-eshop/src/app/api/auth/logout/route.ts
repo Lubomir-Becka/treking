@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revokeSession } from "@/composition/server";
+import { revokeSession } from "@/shared/composition/server";
 
 export async function POST() {
   try {

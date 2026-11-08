@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveActor } from "@/composition/server";
+import { resolveActor } from "@/shared/composition/server";
 
 export async function GET() {
   try {

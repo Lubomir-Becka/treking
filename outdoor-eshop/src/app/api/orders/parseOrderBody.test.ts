@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isValidCreateOrderInput } from "@/domain/checkout/OrderValidation";
+import { isValidCreateOrderInput } from "@/features/checkout/domain/OrderValidation";
 import { parseOrderBody } from "./parseOrderBody";
 
 const validOrder = {
   email: "customer@example.com",
-  shippingMethod: "packeta",
+  shippingMethod: "courier",
   firstName: "Jana",
   lastName: "Nová",
   street: "Horská 1",

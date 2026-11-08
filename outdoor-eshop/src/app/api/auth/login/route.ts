@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { loginCustomer } from "@/composition/server";
-import { isJsonObject, readJsonBody } from "@/server/http/readJsonBody";
+import { loginCustomer } from "@/shared/composition/server";
+import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
 export async function POST(request: Request) {
   try {

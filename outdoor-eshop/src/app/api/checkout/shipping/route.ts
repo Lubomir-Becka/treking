@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { cartUseCases } from "@/composition/server/cart";
-import { getCheckoutShippingOptions } from "@/composition/server/checkout";
-import { resolveCartActor } from "@/composition/server";
+import { cartUseCases } from "@/features/cart/composition/server";
+import { getCheckoutShippingOptions } from "@/features/checkout/composition/server";
+import { resolveCartActor } from "@/shared/composition/server";
 
 export async function GET() {
   try {

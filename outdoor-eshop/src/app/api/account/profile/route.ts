@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { resolveActor, updateCustomerProfile } from "@/composition/server";
-import { isJsonObject, readJsonBody } from "@/server/http/readJsonBody";
+import { resolveActor, updateCustomerProfile } from "@/shared/composition/server";
+import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
 export async function PATCH(request: Request) {
   try {

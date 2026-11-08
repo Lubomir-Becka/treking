@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --import tsx --test $(find src -name '*.test.ts' -print)",
+    "test": "node --import tsx --test $(find src -name '*.test.ts' -print) scripts/architecture-rules.test.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",

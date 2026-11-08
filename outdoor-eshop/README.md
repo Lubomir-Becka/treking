@@ -1,24 +1,36 @@
 # Outdoor e-shop
 
 The project is a Next.js modular monolith for an outdoor equipment shop. Source
-code is grouped first by Clean Architecture layer and then by business area:
+code is grouped first by business area, then by Clean Architecture layer:
 
-- `src/domain/{area}`: framework-independent models, rules, and ports.
-- `src/application/{area}`: use cases and orchestration.
-- `src/infrastructure/{area}`: database, browser API, and external adapters.
-- `src/presentation/{area}`: UI, client entry points, and input/output mapping.
-- `src/composition/client` and `src/composition/server`: client- and
-  server-side composition roots that wire application use cases to
-  infrastructure adapters.
-- `src/app`: Next.js routes and API endpoints.
-- `src/components`: UI components shared across areas.
-- `src/server`: server-only helpers that are not business or infrastructure
-  adapters, such as HTTP request parsing.
+- `src/app`: Next.js routes, API endpoints, and presentation code; URL paths
+  remain unchanged.
+- `src/app/(routes)`: page route entry points; the route group does not
+  contribute a segment to the URL.
+- `src/app/pages/{page}`: page-specific presentation, sections, and styles.
+  These directories do not contain Next.js `page.tsx` or `route.ts` files;
+  route entry points live in the corresponding `(routes)` URL directories.
+  Login and registration share their presentation in `pages/auth`.
+- `src/app/_components`: UI components shared across pages.
+- `src/features/{area}/domain`: framework-independent models, rules, and ports.
+- `src/features/{area}/application`: use cases and orchestration.
+- `src/features/{area}/infrastructure`: database and browser API adapters.
+- `src/features/{area}/composition`: feature client and server wiring.
+- `src/features/products/contracts`: catalog HTTP response contracts.
+- `src/shared`: shared domain utilities, database client, HTTP helpers,
+  and composition that connects different features.
 
 Products owns catalog search, categories, product details, and catalog API
 contracts. Cart owns cart operations; Checkout owns order creation and its
 atomic cart, stock, order, and payment transaction. Session owns identity and
 session lifecycle; Customer owns account data and favorite-color state.
+
+Client-side HTTP adapters live in infrastructure and are wired through
+the feature's `composition/client`. Page presentation may use shared UI but
+must not import another page's internals. The ESLint architecture rule checks
+layer dependency direction, cross-module infrastructure imports, and page
+presentation imports, including relative imports and re-exports; it does not
+attempt to enforce every business ownership boundary.
 
 ## Development
 
@@ -56,9 +68,15 @@ npm run build
 
 ## Deployment notes
 
-Login throttling is held in process memory, so each application process enforces
-its own 10-attempt, 15-minute window per normalized email. This is bounded but
-is not distributed protection; use a shared rate-limit store before scaling
-across multiple processes. The application also reads `x-forwarded-for` for
-session metadata, so the deployment proxy must overwrite that header rather
-than forward a client-supplied value.
+Login throttling uses PostgreSQL: each IP is limited to 50 attempts per 15
+minutes, with a further limit of 10 attempts per IP and normalized email.
+Apply the migrations before deploying this version; login fails if the database
+table is unavailable. The application reads `x-forwarded-for`, so the deployment
+proxy must overwrite that header rather than forward a client-supplied value.
+Without an IP header all requests share an `unknown` bucket.
+
+Packeta is not offered until pickup-point selection is implemented. Guest cart
+merging preserves requested quantities even if they exceed stock or the
+99-item limit; customers are prompted to adjust those items before checkout.
+Checkout delivery details are stored in the browser's session storage and
+removed after a successful order.

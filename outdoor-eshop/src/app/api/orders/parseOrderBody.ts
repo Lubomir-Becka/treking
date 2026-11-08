@@ -1,8 +1,8 @@
 import {
   isPaymentMethodCode,
   isShippingMethodCode,
-} from "@/domain/checkout/checkout";
-import type { CreateOrderInput } from "@/domain/checkout/OrderRepository";
+} from "@/features/checkout/domain/checkout";
+import type { CreateOrderInput } from "@/features/checkout/domain/OrderRepository";
 
 export type OrderBodyInput = Omit<CreateOrderInput, "userId">;
 

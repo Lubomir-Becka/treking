@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { cartUseCases } from "@/composition/server/cart";
-import { resolveCartActor } from "@/composition/server";
-import { isJsonObject, readJsonBody } from "@/server/http/readJsonBody";
+import { cartUseCases } from "@/features/cart/composition/server";
+import { resolveCartActor } from "@/shared/composition/server";
+import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
 type Context = { params: Promise<{ itemId: string }> };
 

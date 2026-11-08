@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchProducts } from "@/composition/server/products";
-import { normalizeProductLimit } from "@/application/products/SearchProducts";
-import { isTargetAudience } from "@/domain/products/product";
-import type { CatalogProductDto } from "@/presentation/products/contracts/CatalogProductDto";
+import { searchProducts } from "@/features/products/composition/server";
+import { normalizeProductLimit } from "@/features/products/application/SearchProducts";
+import { isTargetAudience } from "@/features/products/domain/product";
+import type { CatalogProductDto } from "@/features/products/contracts/products";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -11,6 +11,14 @@ export async function GET(request: NextRequest) {
   const rawAudience = searchParams.get("audience");
   const audience = isTargetAudience(rawAudience) ? rawAudience : undefined;
   const rawLimit = searchParams.get("limit");
+  const rawColorIds = searchParams.getAll("colorId");
+  const colorIds = rawColorIds.map(Number);
+  if (
+    colorIds.length > 100 ||
+    colorIds.some((id) => !Number.isSafeInteger(id) || id < 1)
+  ) {
+    return NextResponse.json({ error: "Neplatné identifikátory farieb." }, { status: 400 });
+  }
   const requestedLimit = rawLimit === null ? undefined : Number(rawLimit);
   const limit = normalizeProductLimit(
     requestedLimit !== undefined && Number.isInteger(requestedLimit)
@@ -24,6 +32,7 @@ export async function GET(request: NextRequest) {
       categorySlug,
       audience,
       limit,
+      ...(colorIds.length ? { colorIds } : {}),
     });
     const catalogProducts: CatalogProductDto[] = data.map((product) => ({
       id: product.id,

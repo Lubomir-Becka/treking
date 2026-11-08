@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getCategories,
   getSubcategories,
-} from "@/composition/server/products";
-import { isTargetAudience } from "@/domain/products/product";
+} from "@/features/products/composition/server";
+import { isTargetAudience } from "@/features/products/domain/product";
 
 export async function GET(request: NextRequest) {
   const value = request.nextUrl.searchParams.get("audience");

@@ -1,8 +1,13 @@
 import { pgTable, unique, check, serial, varchar, boolean, timestamp, index, uniqueIndex, foreignKey, integer, text, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-
-
+export const loginRateLimits = pgTable("login_rate_limits", {
+	key: text("key").primaryKey(),
+	count: integer("count").notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (table) => [
+	index("login_rate_limits_expires_at_idx").on(table.expiresAt),
+]);
 export const users = pgTable("users", {
 	id: serial().primaryKey().notNull(),
 	firstName: varchar("first_name", { length: 50 }).notNull(),

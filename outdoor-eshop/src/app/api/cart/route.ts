@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { resolveCartActor } from "@/composition/server";
-import { cartUseCases } from "@/composition/server/cart";
-import { isJsonObject, readJsonBody } from "@/server/http/readJsonBody";
+import { resolveCartActor } from "@/shared/composition/server";
+import { cartUseCases } from "@/features/cart/composition/server";
+import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
 export async function GET() {
   try {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createCheckoutOrder } from "@/composition/server/checkout";
-import { resolveActor } from "@/composition/server";
-import { readJsonBody } from "@/server/http/readJsonBody";
+import { createCheckoutOrder } from "@/features/checkout/composition/server";
+import { resolveActor } from "@/shared/composition/server";
+import { readJsonBody } from "@/shared/server/http/readJsonBody";
 import { parseOrderBody } from "./parseOrderBody";
 
 async function getUserId(): Promise<number> {
@@ -46,6 +46,9 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
       return NextResponse.json({ error: "Niektorá položka už nie je skladom." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "INVALID_CART_QUANTITY") {
+      return NextResponse.json({ error: "Upravte množstvo položiek na maximálne 99 kusov." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "SHIPPING_METHOD_NOT_FOUND") {
       return NextResponse.json({ error: "Zvolený spôsob dopravy nie je dostupný." }, { status: 400 });

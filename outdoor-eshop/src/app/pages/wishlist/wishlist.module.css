@@ -1,0 +1,116 @@
+.page {
+  background: #f7faf7;
+  min-height: 70vh;
+  padding: 34px clamp(20px, 4vw, 70px) 90px;
+}
+.breadcrumbs, .kicker {
+  color: #64736c;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.wishlistHero {
+  background: #fff;
+  border: 1px solid #e1e8e3;
+}
+.wishlistHero {
+  align-items: end;
+  display: flex;
+  gap: 32px;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding: clamp(24px, 4vw, 48px);
+}
+.wishlistHero h1 {
+  color: #10251c;
+  font-size: clamp(32px, 5vw, 58px);
+  letter-spacing: -.05em;
+  line-height: .96;
+  margin: 18px 0;
+  max-width: 620px;
+  text-transform: uppercase;
+}
+.wishlistHero p { color: #66746d; line-height: 1.6; margin: 0; }
+.wishlistEmpty {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e1e8e3;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 24px;
+  padding: 48px 20px;
+  text-align: center;
+}
+.wishlistEmpty p { color: #66746d; margin: 0; }
+.wishlistProducts {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+}
+.wishlistProduct {
+  background: #fff;
+  border: 1px solid #e1e8e3;
+  position: relative;
+}
+.wishlistProductLink {
+  color: inherit;
+  display: block;
+  text-decoration: none;
+}
+.wishlistProductImage {
+  background: #fff;
+  display: block;
+  height: 280px;
+  overflow: hidden;
+  position: relative;
+}
+.wishlistProductImage img { object-fit: contain; }
+.wishlistProductBody {
+  border-top: 1px solid #e1e8e3;
+  display: grid;
+  gap: 9px;
+  padding: 16px;
+}
+.wishlistProductBody strong {
+  color: #13271e;
+  font-size: 15px;
+  text-transform: uppercase;
+}
+.wishlistProductBody small {
+  color: #68766f;
+  font-size: 11px;
+}
+.wishlistProductBody b {
+  color: #10251c;
+  font-size: 16px;
+}
+.wishlistFavorite {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 2;
+}
+.primaryButton {
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 10px;
+  justify-content: center;
+  letter-spacing: .1em;
+  min-height: 44px;
+  padding: 13px 18px;
+  text-transform: uppercase;
+}
+.primaryButton { background: #0b2b20; color: #fff; }
+@media (max-width: 900px) {
+  .wishlistHero { align-items: start; flex-direction: column; }
+  .wishlistProducts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .wishlistProducts { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .page { padding-inline: 16px; }
+}

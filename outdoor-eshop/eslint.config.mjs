@@ -1,4 +1,5 @@
 import tsParser from "@typescript-eslint/parser";
+import { architectureRule } from "./scripts/architecture-rules.mjs";
 
 export default [
   {
@@ -21,6 +22,10 @@ export default [
     rules: {
       "no-console": "warn",
       "no-constant-condition": "error",
+      "architecture/boundaries": "error",
+    },
+    plugins: {
+      architecture: { rules: { boundaries: architectureRule } },
     },
   },
 ];

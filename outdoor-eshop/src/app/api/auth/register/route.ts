@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { registerCustomer } from "@/composition/server";
-import { isJsonObject, readJsonBody } from "@/server/http/readJsonBody";
+import { registerCustomer } from "@/shared/composition/server";
+import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         typeof parsedBody.body.phone !== "string")
     ) {
       return NextResponse.json(
-        { error: "Vyplňte údaje a heslo s minimálne 8 znakmi." },
+        { error: "Vyplňte platné údaje a heslo s 8 až 72 bajtmi." },
         { status: 400 },
       );
     }
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Účet s týmto e-mailom už existuje." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "INVALID_REGISTRATION") {
-      return NextResponse.json({ error: "Vyplňte údaje a heslo s minimálne 8 znakmi." }, { status: 400 });
+      return NextResponse.json({ error: "Vyplňte platné údaje a heslo s 8 až 72 bajtmi." }, { status: 400 });
     }
     console.error("Registration failed:", error);
     return NextResponse.json({ error: "Registráciu sa nepodarilo dokončiť." }, { status: 500 });

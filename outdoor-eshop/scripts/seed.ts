@@ -2,7 +2,7 @@ import "dotenv/config";
 import { existsSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { and, eq, inArray } from "drizzle-orm";
-import { db } from "../src/infrastructure/db/client";
+import { db } from "../src/shared/db/client";
 import {
   attributes,
   categories,
@@ -925,13 +925,6 @@ async function seed() {
   await db
     .insert(shippingMethods)
     .values([
-      {
-        code: "packeta",
-        name: "Packeta Z-BOX & výdajné miesto",
-        price: "3.90",
-        freeFromAmount: "100.00",
-        isActive: true,
-      },
       {
         code: "courier",
         name: "Kuriér na adresu",
