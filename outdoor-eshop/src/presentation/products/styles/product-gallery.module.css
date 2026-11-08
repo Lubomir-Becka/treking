@@ -1,0 +1,103 @@
+.gallery {
+  min-width: 0;
+}
+
+.hero {
+  background: #fff;
+  height: min(660px, 62vw);
+  min-height: 480px;
+  overflow: hidden;
+  position: relative;
+}
+
+.hero img {
+  object-fit: contain;
+  padding: 7%;
+  transition: transform 0.4s ease;
+}
+
+.hero:hover img {
+  transform: scale(1.05);
+}
+
+.hero > span {
+  background: rgba(255, 255, 255, 0.9);
+  bottom: 18px;
+  color: #66736d;
+  font-size: 8px;
+  left: 18px;
+  letter-spacing: 0.16em;
+  padding: 9px 11px;
+  position: absolute;
+  text-transform: uppercase;
+}
+
+.hero > b {
+  bottom: 20px;
+  color: #84908a;
+  font-size: 10px;
+  font-weight: 400;
+  position: absolute;
+  right: 20px;
+}
+
+.thumbnails {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.thumbnails button {
+  background: #fff;
+  border: 1px solid #d9dad7;
+  cursor: pointer;
+  height: 92px;
+  min-width: 92px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  width: 92px;
+}
+
+.thumbnails button.active {
+  border: 2px solid #1b382b;
+}
+
+.thumbnails img {
+  object-fit: contain;
+  padding: 5px;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    min-height: 400px;
+  }
+
+  .thumbnails button {
+    height: 72px;
+    min-width: 72px;
+    width: 72px;
+  }
+}
+
+@media (max-width: 700px) {
+  .gallery {
+    margin: 0 -20px;
+  }
+
+  .hero {
+    height: min(100vw, 520px);
+    min-height: 0;
+  }
+
+  .hero img {
+    padding: 8%;
+  }
+
+  .thumbnails {
+    justify-content: start;
+    overflow-x: auto;
+    padding: 0 20px 4px;
+  }
+}
