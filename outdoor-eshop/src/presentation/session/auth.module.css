@@ -1,0 +1,78 @@
+.authPage {
+  margin: 0 auto;
+  max-width: 620px;
+  min-height: 60vh;
+  padding: 80px 20px;
+}
+
+.kicker {
+  color: #64736c;
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.authPage h1 {
+  color: #10251c;
+  font-size: clamp(32px, 5vw, 56px);
+  letter-spacing: -.05em;
+  margin: 18px 0 12px;
+}
+
+.authModes {
+  border-bottom: 1px solid #e1e8e3;
+  display: flex;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.authModes button {
+  background: transparent;
+  border: 0;
+  color: #64736c;
+  cursor: pointer;
+  padding: 12px 0;
+}
+
+.authModes .authModeActive {
+  border-bottom: 2px solid #10251c;
+  color: #10251c;
+  font-weight: 700;
+}
+
+.authForm {
+  background: #fff;
+  border: 1px solid #e1e8e3;
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 24px;
+}
+
+.authForm label {
+  color: #64736c;
+  display: grid;
+  font-size: 12px;
+  gap: 7px;
+}
+
+.authForm input {
+  border: 1px solid #cbd8d0;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.authForm button {
+  background: #10251c;
+  border: 1px solid #10251c;
+  color: #fff;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 700;
+  padding: 13px 20px;
+}
+
+.authForm button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
