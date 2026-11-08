@@ -86,10 +86,10 @@ export const categories = pgTable("categories", {
 
 export const products = pgTable("products", {
 	id: serial().primaryKey().notNull(),
-	name: varchar({ length: 150 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
 	slug: varchar({ length: 180 }).notNull(),
 	description: text(),
-	brand: varchar({ length: 50 }).notNull(),
+	brand: varchar({ length: 100 }).notNull(),
 	categoryId: integer("category_id"),
 	audience: varchar({ length: 10 }).default('unisex').notNull(),
 	isActive: boolean("is_active").default(true),
@@ -107,7 +107,7 @@ export const products = pgTable("products", {
 			name: "products_category_id_fkey"
 		}).onDelete("set null"),
 	unique("products_slug_key").on(table.slug),
-	check("products_audience_check", sql`(audience)::text = ANY ((ARRAY['men'::character varying, 'women'::character varying, 'kids'::character varying, 'unisex'::character varying])::text[])`),
+	check("products_audience_check", sql`(audience)::text = ANY ((ARRAY['men'::character varying, 'women'::character varying, 'unisex'::character varying])::text[])`),
 ]);
 
 export const productAttributes = pgTable("product_attributes", {
