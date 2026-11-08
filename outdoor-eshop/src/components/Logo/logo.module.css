@@ -1,0 +1,13 @@
+.logo {
+  align-items: center;
+  color: #17231f;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 9px;
+  letter-spacing: .16em;
+}
+.logo img { height: 27px; width: 42px; }
+.logo small { display: block; font-size: 7px; letter-spacing: .34em; margin-top: 3px; }
+.inverted { color: #fff; }

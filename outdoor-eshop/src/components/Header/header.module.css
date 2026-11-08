@@ -1,0 +1,37 @@
+.header {
+  align-items: center;
+  background: rgba(248, 251, 249, 0.93);
+  border-bottom: 1px solid rgba(11, 43, 32, 0.16);
+  display: flex;
+  gap: 34px;
+  height: 72px;
+  justify-content: space-between;
+  padding: 0 clamp(20px, 4vw, 70px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(14px);
+}
+.navigation { display: flex; gap: 26px; margin-right: auto; }
+.navigation a, .actions button, .account span {
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.navigation span { color: #788780; font-size: 14px; margin-left: 4px; }
+.search { align-items: center; border: 1px solid #bec9c3; display: flex; height: 38px; max-width: 340px; padding: 0 12px; width: 30%; }
+.icon { font-size: 19px; line-height: 1; }
+.search input { background: transparent; border: 0; color: #17231f; font-size: 10px; letter-spacing: .1em; outline: 0; padding-left: 9px; text-transform: uppercase; width: 100%; }
+.actions { align-items: center; display: flex; gap: 18px; }
+.actionLink, .account { align-items: center; color: #17231f; display: flex; gap: 5px; padding: 0; }
+.actions b { color: #d6a64a; font-size: 9px; }
+.account span { font-size: 9px; }
+@media (max-width: 800px) {
+  .header { gap: 16px; height: 64px; padding: 0 18px; }
+  .navigation { gap: 10px; }
+  .navigation a { font-size: 8px; }
+  .search { display: none; }
+  .account span { display: none; }
+  .actions { gap: 10px; }
+}
+@media (max-width: 480px) { .navigation { display: none; } }
