@@ -1,3 +1,3 @@
-import SearchPage from "@/modules/search/page";
+import CatalogSearchPage from "@/presentation/products/catalog/CatalogSearchPage";
 
-export default SearchPage;
+export default CatalogSearchPage;
