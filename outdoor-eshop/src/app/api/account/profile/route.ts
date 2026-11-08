@@ -8,6 +8,9 @@ export async function PATCH(request: Request) {
     if (actor.type !== "authenticated") {
       return NextResponse.json({ error: "Prihláste sa do svojho účtu." }, { status: 401 });
     }
+    if (actor.role !== "customer") {
+      return NextResponse.json({ error: "Profil je dostupný iba zákazníkom." }, { status: 403 });
+    }
 
     const parsedBody = await readJsonBody(request);
     if (

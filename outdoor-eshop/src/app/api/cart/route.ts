@@ -9,6 +9,9 @@ export async function GET() {
       data: await cartUseCases.getCart(await resolveCartActor()),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "CUSTOMER_ACCESS_REQUIRED") {
+      return NextResponse.json({ error: "Košík je dostupný iba zákazníkom." }, { status: 403 });
+    }
     console.error("Cart load failed:", error);
     return NextResponse.json({ error: "Košík sa nepodarilo načítať." }, { status: 500 });
   }
@@ -35,6 +38,9 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ data: cart }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "CUSTOMER_ACCESS_REQUIRED") {
+      return NextResponse.json({ error: "Košík je dostupný iba zákazníkom." }, { status: 403 });
+    }
     if (error instanceof Error && ["INVALID_VARIANT", "INVALID_QUANTITY"].includes(error.message)) {
       return NextResponse.json({ error: "Neplatné údaje položky." }, { status: 400 });
     }

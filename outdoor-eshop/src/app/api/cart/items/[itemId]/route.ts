@@ -28,6 +28,9 @@ export async function PATCH(request: Request, context: Context) {
       ),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "CUSTOMER_ACCESS_REQUIRED") {
+      return NextResponse.json({ error: "Košík je dostupný iba zákazníkom." }, { status: 403 });
+    }
     if (error instanceof Error && ["INVALID_ITEM", "INVALID_QUANTITY", "ITEM_NOT_FOUND"].includes(error.message)) {
       return NextResponse.json({ error: "Neplatná položka alebo množstvo." }, { status: 400 });
     }
@@ -48,6 +51,9 @@ export async function DELETE(_request: Request, context: Context) {
       ),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "CUSTOMER_ACCESS_REQUIRED") {
+      return NextResponse.json({ error: "Košík je dostupný iba zákazníkom." }, { status: 403 });
+    }
     if (error instanceof Error && error.message === "INVALID_ITEM") {
       return NextResponse.json({ error: "Neplatná položka." }, { status: 400 });
     }

@@ -13,6 +13,9 @@ export async function GET() {
     const options = await getCheckoutShippingOptions(subtotal);
     return NextResponse.json({ data: { options } });
   } catch (error) {
+    if (error instanceof Error && error.message === "CUSTOMER_ACCESS_REQUIRED") {
+      return NextResponse.json({ error: "Doprava je dostupná iba zákazníkom." }, { status: 403 });
+    }
     console.error("Shipping quote failed:", error);
     return NextResponse.json(
       { error: "Cenu dopravy sa nepodarilo načítať." },

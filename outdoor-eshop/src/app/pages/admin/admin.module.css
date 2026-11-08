@@ -1,0 +1,45 @@
+.page {
+  min-height: 100vh;
+  background: #f5f5f2;
+  color: #1c211d;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem clamp(1rem, 5vw, 4rem);
+  background: #1c211d;
+  color: #fff;
+}
+
+.brand {
+  font-weight: 700;
+}
+
+.header button {
+  padding: 0.6rem 1rem;
+  border: 1px solid currentColor;
+  cursor: pointer;
+}
+
+.header button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.content {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 4rem 1rem;
+}
+
+.content h1 {
+  margin-bottom: 1rem;
+  font-size: 2rem;
+}
+
+.content p {
+  margin-top: 0.75rem;
+}

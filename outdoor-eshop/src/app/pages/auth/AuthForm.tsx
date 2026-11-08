@@ -21,9 +21,11 @@ export function AuthForm({ mode, nextPath = "/account" }: AuthFormProps) {
     const payload = Object.fromEntries(form.entries());
 
     try {
-      await authenticate(activeMode, payload);
-      window.dispatchEvent(new CustomEvent("vertex-cart-updated"));
-      router.push(nextPath);
+      const role = await authenticate(activeMode, payload);
+      if (role === "customer") {
+        window.dispatchEvent(new CustomEvent("vertex-cart-updated"));
+      }
+      router.push(role === "admin" ? "/admin" : nextPath);
       router.refresh();
     } catch (requestError) {
       setError(

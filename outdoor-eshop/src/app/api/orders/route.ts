@@ -9,6 +9,9 @@ async function getUserId(): Promise<number> {
   if (actor.type !== "authenticated") {
     throw new Error("AUTHENTICATION_REQUIRED");
   }
+  if (actor.role !== "customer") {
+    throw new Error("CUSTOMER_ACCESS_REQUIRED");
+  }
   return actor.userId;
 }
 
@@ -37,6 +40,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "AUTHENTICATION_REQUIRED") {
       return NextResponse.json({ error: "Pre pokračovanie sa musíte prihlásiť." }, { status: 401 });
+    }
+    if (error instanceof Error && error.message === "CUSTOMER_ACCESS_REQUIRED") {
+      return NextResponse.json({ error: "Objednávky sú dostupné iba zákazníkom." }, { status: 403 });
     }
     if (error instanceof Error && error.message === "INVALID_SHIPPING_DATA") {
       return NextResponse.json({ error: "Vyplňte všetky povinné údaje." }, { status: 400 });
