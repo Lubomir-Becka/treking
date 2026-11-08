@@ -1,0 +1,3 @@
+ALTER TABLE "products" ADD COLUMN "audience" varchar(10) DEFAULT 'unisex' NOT NULL;--> statement-breakpoint
+CREATE INDEX "idx_products_audience" ON "products" USING btree ("audience" text_ops);--> statement-breakpoint
+ALTER TABLE "products" ADD CONSTRAINT "products_audience_check" CHECK ((audience)::text = ANY ((ARRAY['men'::character varying, 'women'::character varying, 'kids'::character varying, 'unisex'::character varying])::text[]));
