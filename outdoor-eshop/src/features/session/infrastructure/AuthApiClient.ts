@@ -1,7 +1,9 @@
+import { isUserRole, type UserRole } from "../domain/UserRole";
+
 export async function authenticate(
   mode: "login" | "register",
   payload: Record<string, FormDataEntryValue>,
-): Promise<void> {
+): Promise<UserRole> {
   const response = await fetch(`/api/auth/${mode}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -15,6 +17,14 @@ export async function authenticate(
       : "Požiadavku sa nepodarilo dokončiť.";
     throw new Error(message);
   }
+  if (
+    typeof result !== "object" || result === null ||
+    !("data" in result) || typeof result.data !== "object" || result.data === null ||
+    !("role" in result.data) || !isUserRole(result.data.role)
+  ) {
+    throw new Error("Odpoveď prihlásenia nemá platný formát.");
+  }
+  return result.data.role;
 }
 
 export async function fetchSessionStatus(): Promise<boolean> {

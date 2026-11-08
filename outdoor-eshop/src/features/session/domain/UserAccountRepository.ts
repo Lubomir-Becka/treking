@@ -1,3 +1,5 @@
+import type { UserRole } from "./UserRole";
+
 export type UserAccount = {
   id: number;
   email: string;
@@ -5,6 +7,7 @@ export type UserAccount = {
   lastName: string;
   passwordHash: string;
   isActive: boolean;
+  role: UserRole;
 };
 
 export type CreateUserAccountInput = {

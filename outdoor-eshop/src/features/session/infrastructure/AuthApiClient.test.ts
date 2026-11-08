@@ -9,10 +9,10 @@ test("auth client sends credentials, reads session status, and logs out", async 
     if (String(input).endsWith("/session")) {
       return Response.json({ data: { authenticated: true } });
     }
-    return Response.json({ data: {} });
+    return Response.json({ data: { role: "customer" } });
   });
   try {
-    await authenticate("login", { email: "customer@example.com", password: "password" });
+    assert.equal(await authenticate("login", { email: "customer@example.com", password: "password" }), "customer");
     assert.equal(await fetchSessionStatus(), true);
     await logout();
     assert.deepEqual(requests.map((request) => request.url), [
@@ -32,6 +32,7 @@ test("auth client reports API errors and invalid session data", async () => {
   try {
     await assert.rejects(authenticate("login", {}), { message: "Nesprávne heslo." });
     fetchMock.mock.mockImplementation(async () => Response.json({ data: {} }));
+    await assert.rejects(authenticate("login", {}), { message: "Odpoveď prihlásenia nemá platný formát." });
     await assert.rejects(fetchSessionStatus(), { message: "Session status response is invalid." });
   } finally {
     fetchMock.mock.restore();

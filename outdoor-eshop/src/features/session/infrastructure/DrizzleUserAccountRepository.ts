@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db/client";
 import { users } from "../../../../drizzle/schema";
+import { isUserRole } from "../domain/UserRole";
 import type {
   CreateUserAccountInput,
   UpdateUserProfileInput,
@@ -9,13 +10,17 @@ import type {
 } from "../domain/UserAccountRepository";
 
 function mapUser(row: typeof users.$inferSelect): UserAccount {
+  if (!isUserRole(row.role)) {
+    throw new Error("INVALID_USER_ROLE");
+  }
   return {
     id: row.id,
     email: row.email,
     firstName: row.firstName,
     lastName: row.lastName,
     passwordHash: row.passwordHash,
-    isActive: row.isActive ?? true,
+    isActive: row.isActive === true,
+    role: row.role,
   };
 }
 
@@ -44,6 +49,7 @@ export class DrizzleUserAccountRepository implements UserAccountRepository {
       .values({
         ...input,
         email: input.email,
+        role: "customer",
       })
       .onConflictDoNothing({ target: users.email })
       .returning();

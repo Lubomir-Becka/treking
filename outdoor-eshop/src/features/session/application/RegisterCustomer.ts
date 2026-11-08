@@ -46,9 +46,10 @@ export function createRegisterCustomer(
 
     await createSession({
       userId: user.id,
+      role: "customer",
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
     });
-    return { id: user.id, email: user.email };
+    return { id: user.id, email: user.email, role: "customer" as const };
   };
 }

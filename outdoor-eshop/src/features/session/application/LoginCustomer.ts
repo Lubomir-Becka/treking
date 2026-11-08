@@ -27,9 +27,10 @@ export function createLoginCustomer(
 
     await createSession({
       userId: user.id,
+      role: user.role,
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
     });
-    return { id: user.id, email: user.email };
+    return { id: user.id, email: user.email, role: user.role };
   };
 }

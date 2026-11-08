@@ -14,6 +14,7 @@ const user: UserAccount = {
   lastName: "Nová",
   passwordHash: "hashed-password",
   isActive: true,
+  role: "customer",
 };
 
 function setup(existingEmail?: string) {

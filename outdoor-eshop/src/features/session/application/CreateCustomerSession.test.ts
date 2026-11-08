@@ -6,7 +6,7 @@ import type { SessionRepository } from "../domain/SessionRepository";
 import type { TokenServicePort } from "../domain/TokenServicePort";
 import type { GuestCartMergePort } from "../domain/GuestCartMergePort";
 
-test("merges guest cart before deleting its session and clearing its cookie", async () => {
+async function createSessionWithGuest(role: "customer" | "admin") {
   const operations: string[] = [];
   const cookies: SessionCookiePort = {
     get: async (name) =>
@@ -60,13 +60,27 @@ test("merges guest cart before deleting its session and clearing its cookie", as
     repository,
     tokens,
     guestCartMerger,
-  )({ userId: 17 });
+  )({ userId: 17, role });
+
+  return operations;
+}
+
+test("merges guest cart before deleting its session and clearing its cookie", async () => {
+  const operations = await createSessionWithGuest("customer");
 
   assert.deepEqual(operations, [
     "create-customer-session",
     "merge-guest-cart",
     "delete-guest-session",
     "clear-guest-cookie",
+    "set-customer-cookie",
+  ]);
+});
+
+test("admin login preserves the guest cart and cookie", async () => {
+  const operations = await createSessionWithGuest("admin");
+  assert.deepEqual(operations, [
+    "create-customer-session",
     "set-customer-cookie",
   ]);
 });

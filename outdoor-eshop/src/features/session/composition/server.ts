@@ -25,6 +25,7 @@ export function createSessionComposition(guestCartMerger: GuestCartMergePort) {
     cookies,
     repository,
     tokens,
+    accounts,
   );
   const ensureGuestActor = createEnsureGuestSession(
     cookies,

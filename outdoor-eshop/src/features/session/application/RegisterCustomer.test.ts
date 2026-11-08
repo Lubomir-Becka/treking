@@ -12,6 +12,7 @@ const user = {
   lastName: "Nova",
   passwordHash: "hash",
   isActive: true,
+  role: "customer" as const,
 };
 const input = { email: user.email, firstName: "Jana", lastName: "Nova", password: "password" };
 const passwords: PasswordServicePort = {

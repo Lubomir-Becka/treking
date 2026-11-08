@@ -1,3 +1,5 @@
+import type { UserRole } from "./UserRole";
+
 export type GuestActor = {
   type: "guest";
   tokenHash: string;
@@ -9,6 +11,7 @@ export type AuthenticatedActor = {
   userId: number;
   sessionId: number;
   expiresAt: Date;
+  role: UserRole;
 };
 
 export type AnonymousVisitor = {

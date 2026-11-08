@@ -6,11 +6,13 @@ import {
 import type { SessionRepository } from "../domain/SessionRepository";
 import type { TokenServicePort } from "../domain/TokenServicePort";
 import type { GuestCartMergePort } from "../domain/GuestCartMergePort";
+import type { UserRole } from "../domain/UserRole";
 
 const CUSTOMER_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type CreateCustomerSessionInput = {
   userId: number;
+  role: UserRole;
   ipAddress?: string;
   userAgent?: string;
 };
@@ -34,12 +36,14 @@ export function createCustomerSession(
     const expiresAt = new Date(Date.now() + CUSTOMER_LIFETIME_MS);
 
     const session = await repository.createUserSession({
-      ...input,
+      userId: input.userId,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
       tokenHash,
       expiresAt,
     });
 
-    if (guestToken) {
+    if (guestToken && input.role === "customer") {
       const guestTokenHash = tokens.hashToken(guestToken);
       await guestCartMerger.mergeGuestCart(
         guestTokenHash,
