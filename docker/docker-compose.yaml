@@ -1,4 +1,17 @@
 services:
+  app:
+    build:
+      context: ../outdoor-eshop
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/outdoor_eshop
+      PRODUCT_IMAGE_DIRECTORY: /var/lib/outdoor-eshop/product-images
+    ports:
+      - "3000:3000"
+    volumes:
+      - product_images:/var/lib/outdoor-eshop/product-images
+    depends_on:
+      - postgres
+
   postgres:
     image: postgres:16-alpine
     container_name: outdoor_eshop_db
@@ -14,7 +27,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
 
   adminer:
     image: adminer:latest
@@ -27,3 +39,4 @@ services:
 
 volumes:
   pgdata:
+  product_images:
