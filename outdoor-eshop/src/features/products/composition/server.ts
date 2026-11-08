@@ -1,8 +1,11 @@
 import { DrizzleProductRepository } from "../infrastructure/DrizzleProductRepository";
 import { createGetProductDetail } from "../application/GetProductDetail";
 import { createSearchProducts } from "../application/SearchProducts";
+import { createCategoryManagement } from "../application/ManageCategories";
+import { DrizzleCategoryManagementRepository } from "../infrastructure/DrizzleCategoryManagementRepository";
 
 const productRepository = new DrizzleProductRepository();
+export const categoryManagement = createCategoryManagement(new DrizzleCategoryManagementRepository());
 
 export const getProductDetail = createGetProductDetail(productRepository);
 export const searchProducts = createSearchProducts(productRepository);
