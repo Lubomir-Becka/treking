@@ -35,7 +35,7 @@ export function CategoryForm({ categories, editing, disabled, onSave, onCancel }
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <h3>{editing ? "Upraviť kategóriu" : "Nová kategória"}</h3>
+      <h3>{editing ? `Upraviť kategóriu: ${editing.name}` : "Nová kategória"}</h3>
       {error && <p role="alert">{error}</p>}
       <label>
         Názov

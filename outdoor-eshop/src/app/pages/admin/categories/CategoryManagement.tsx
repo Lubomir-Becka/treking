@@ -13,8 +13,13 @@ import { CategoryList } from "./CategoryList";
 import { runCategoryMutation } from "./categoryMutation";
 import styles from "../admin.module.css";
 
-export function CategoryManagement({ initialCategories }: { initialCategories: AdminCategory[] }) {
-  const [categories, setCategories] = useState(initialCategories);
+export function CategoryManagement({
+  categories,
+  onCategoriesChange,
+}: {
+  categories: AdminCategory[];
+  onCategoriesChange: (categories: AdminCategory[]) => void;
+}) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formVersion, setFormVersion] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -29,7 +34,7 @@ export function CategoryManagement({ initialCategories }: { initialCategories: A
     setBusy(true);
     setError(null);
     try {
-      setCategories(await fetchAdminCategories());
+      onCategoriesChange(await fetchAdminCategories());
       if (resetAfterRefresh) {
         setEditingId(null);
         setFormVersion((version) => version + 1);
@@ -66,7 +71,7 @@ export function CategoryManagement({ initialCategories }: { initialCategories: A
         setNeedsRefresh(true);
         setError("Zmena sa uložila, ale zoznam sa nepodarilo obnoviť. Skúste to znova.");
       } else {
-        setCategories(result.categories);
+        onCategoriesChange(result.categories);
         setNeedsRefresh(false);
       }
     } catch (requestError) {

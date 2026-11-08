@@ -90,12 +90,20 @@ export class DrizzleCartRepository implements CartRepository {
         .for("update");
 
       const [variant] = await tx
-        .select({ id: productVariants.id, stock: productVariants.stock, active: productVariants.isActive })
+        .select({
+          id: productVariants.id,
+          stock: productVariants.stock,
+          active: productVariants.isActive,
+          productActive: products.isActive,
+        })
         .from(productVariants)
+        .innerJoin(productColors, eq(productVariants.productColorId, productColors.id))
+        .innerJoin(products, eq(productColors.productId, products.id))
         .where(eq(productVariants.id, variantId))
-        .limit(1);
+        .limit(1)
+        .for("update");
 
-      if (!variant?.active || (variant.stock ?? 0) < quantity) {
+      if (!variant?.active || !variant.productActive || (variant.stock ?? 0) < quantity) {
         throw new Error("INSUFFICIENT_STOCK");
       }
 
@@ -124,13 +132,21 @@ export class DrizzleCartRepository implements CartRepository {
         .where(eq(carts.id, cart.id))
         .for("update");
       const [item] = await tx
-        .select({ itemId: cartItems.id, stock: productVariants.stock })
+        .select({
+          itemId: cartItems.id,
+          stock: productVariants.stock,
+          active: productVariants.isActive,
+          productActive: products.isActive,
+        })
         .from(cartItems)
         .innerJoin(productVariants, eq(cartItems.productVariantId, productVariants.id))
+        .innerJoin(productColors, eq(productVariants.productColorId, productColors.id))
+        .innerJoin(products, eq(productColors.productId, products.id))
         .where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)))
-        .limit(1);
+        .limit(1)
+        .for("update");
       if (!item) throw new Error("ITEM_NOT_FOUND");
-      if (quantity > (item.stock ?? 0)) throw new Error("INSUFFICIENT_STOCK");
+      if (!item.active || !item.productActive || quantity > (item.stock ?? 0)) throw new Error("INSUFFICIENT_STOCK");
       await tx.update(cartItems).set({ quantity }).where(eq(cartItems.id, itemId));
     });
     return loadCart(cart.id);

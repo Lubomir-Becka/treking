@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authorizeAdmin } from "@/shared/composition/server";
 import { AdminPage } from "@/app/pages/admin/AdminPage";
-import { categoryManagement } from "@/features/products/composition/server";
+import { categoryManagement, listAdminProducts } from "@/features/products/composition/server";
+import { listAdminCustomers } from "@/features/session/composition/server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function AdminRoute() {
   const access = await authorizeAdmin();
 
   if (access.status === "unauthenticated") {
-    redirect("/login?next=%2Fadmin");
+    redirect("/admin/login");
   }
 
   if (access.status === "forbidden") {
@@ -23,6 +24,10 @@ export default async function AdminRoute() {
     );
   }
 
-  const categories = await categoryManagement.list();
-  return <AdminPage initialCategories={categories} />;
+  const [categories, customers, products] = await Promise.all([
+    categoryManagement.list(),
+    listAdminCustomers(),
+    listAdminProducts(),
+  ]);
+  return <AdminPage initialCategories={categories} initialCustomers={customers} initialProducts={products} />;
 }

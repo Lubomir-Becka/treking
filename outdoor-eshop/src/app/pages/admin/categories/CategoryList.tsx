@@ -15,10 +15,16 @@ export function CategoryList({ categories, disabled, onEdit, onDelete }: Props) 
 
   return (
     <ul className={styles.categoryList}>
-      {categories.map((category) => (
+      {categories
+        .filter((category) => category.parentId === null)
+        .flatMap((category) => [
+          category,
+          ...categories.filter((child) => child.parentId === category.id),
+        ])
+        .map((category) => (
         <li key={category.id} className={styles.categoryItem}>
           <div>
-            <strong>{category.name}</strong>
+            <strong>{category.parentId === null ? category.name : `↳ ${category.name}`}</strong>
             <p>Slug: {category.slug}</p>
             <p>
               Nadradená kategória:{" "}

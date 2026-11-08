@@ -35,17 +35,38 @@
   padding: 4rem 1rem;
 }
 
-.content h1 {
-  margin-bottom: 1rem;
-  font-size: 2rem;
-}
-
 .content p {
   margin-top: 0.75rem;
 }
 
+.navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 2rem 0;
+  border-bottom: 1px solid #d6d9d4;
+}
+
+.navigation button {
+  padding: 0.75rem 1rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.navigation button[aria-current="page"] {
+  background: #1c211d;
+  color: #fff;
+}
+
 .categories {
   margin-top: 2rem;
+}
+
+.productImage {
+  max-width: 220px;
+  max-height: 220px;
+  object-fit: contain;
 }
 
 .form {
@@ -61,7 +82,8 @@
 }
 
 .form input,
-.form select {
+.form select,
+.form textarea {
   width: 100%;
   padding: 0.6rem;
   border: 1px solid #757b75;
@@ -101,4 +123,35 @@
   padding: 1rem;
   background: #fff;
   border: 1px solid #d6d9d4;
+}
+
+.inventory,
+.colorCard {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid #d6d9d4;
+  background: #fff;
+}
+
+.colorCard label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0;
+}
+
+.colorCard input[type="checkbox"] {
+  width: auto;
+}
+
+.sizeChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.sizeChoices label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
 }

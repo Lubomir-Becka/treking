@@ -3,7 +3,12 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import postgres from "postgres";
+import sharp from "sharp";
+import bcrypt from "bcryptjs";
 
 // Run after npm run build. This creates and removes its own PostgreSQL container.
 function command(program, args, options = {}) {
@@ -57,6 +62,7 @@ async function waitForServer(url, server) {
 let containerId;
 let sql;
 let server;
+let imageDirectory;
 let serverOutput = "";
 try {
   containerId = command("docker", [
@@ -75,6 +81,22 @@ try {
   await sql`create database favorites_migration`;
   const { testFavoritesMigration } = await import("./test-favorites-migration.mjs");
   await testFavoritesMigration(port);
+  await sql`create database seed_verification`;
+  const seedUrl = new URL(databaseUrl);
+  seedUrl.pathname = "/seed_verification";
+  command("npm", ["run", "db:migrate"], {
+    env: { ...process.env, DATABASE_URL: seedUrl.toString() },
+  });
+  command("npm", ["run", "db:seed"], {
+    env: { ...process.env, DATABASE_URL: seedUrl.toString() },
+  });
+  const seedDb = postgres(seedUrl.toString(), { max: 1 });
+  try {
+    assert.ok((await seedDb`select count(*)::int as count from products`)[0].count > 0);
+    assert.ok((await seedDb`select count(*)::int as count from product_variants`)[0].count > 0);
+  } finally {
+    await seedDb.end();
+  }
   command("npm", ["run", "db:migrate"], {
     env: { ...process.env, DATABASE_URL: databaseUrl },
   });
@@ -99,8 +121,9 @@ try {
   const otherCustomer = await createSession("customer", "other@integration.test");
   const appPort = await unusedPort();
   const base = `http://127.0.0.1:${appPort}`;
+  imageDirectory = await mkdtemp(join(tmpdir(), "product-images-test-"));
   server = spawn("./node_modules/.bin/next", ["start", "-H", "127.0.0.1", "-p", String(appPort)], {
-    env: { ...process.env, DATABASE_URL: databaseUrl, NEXT_TELEMETRY_DISABLED: "1" },
+    env: { ...process.env, DATABASE_URL: databaseUrl, PRODUCT_IMAGE_DIRECTORY: imageDirectory, NEXT_TELEMETRY_DISABLED: "1" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
@@ -117,6 +140,203 @@ try {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+  }
+
+  const loginPassword = "integration-login-password";
+  const loginHash = await bcrypt.hash(loginPassword, 4);
+  await sql`update users set password_hash = ${loginHash} where email in ('admin@integration.test', 'customer@integration.test')`;
+  const login = (path, email) => request("POST", path, undefined, { email, password: loginPassword });
+  const adminThroughCustomer = await login("/api/auth/login", "admin@integration.test");
+  assert.equal(adminThroughCustomer.status, 401);
+  assert.equal(adminThroughCustomer.headers.get("set-cookie"), null);
+  const customerThroughAdmin = await login("/api/admin/auth/login", "customer@integration.test");
+  assert.equal(customerThroughAdmin.status, 401);
+  assert.equal(customerThroughAdmin.headers.get("set-cookie"), null);
+  const customerLogin = await login("/api/auth/login", "customer@integration.test");
+  assert.equal(customerLogin.status, 200);
+  assert.equal((await customerLogin.json()).data.role, "customer");
+  const customerLoginCookie = customerLogin.headers.get("set-cookie")?.split(";")[0];
+  assert.ok(customerLoginCookie);
+  assert.equal((await request("GET", "/api/admin/products", customerLoginCookie)).status, 403);
+  const failedAdminLogin = await request("POST", "/api/admin/auth/login", customerLoginCookie, {
+    email: "customer@integration.test", password: loginPassword,
+  });
+  assert.equal(failedAdminLogin.status, 401);
+  assert.equal(failedAdminLogin.headers.get("set-cookie"), null);
+  assert.equal((await request("GET", "/api/auth/session", customerLoginCookie)).status, 200);
+  assert.equal((await (await request("GET", "/api/auth/session", customerLoginCookie)).json()).data.authenticated, true);
+  const adminLogin = await login("/api/admin/auth/login", "admin@integration.test");
+  assert.equal(adminLogin.status, 200);
+  assert.equal((await adminLogin.json()).data.role, "admin");
+  const adminLoginCookie = adminLogin.headers.get("set-cookie")?.split(";")[0];
+  assert.ok(adminLoginCookie);
+  assert.equal((await request("GET", "/api/admin/products", adminLoginCookie)).status, 200);
+  const adminRedirect = await fetch(`${base}/admin`, { redirect: "manual" });
+  assert.equal(adminRedirect.status, 307);
+  assert.equal(new URL(adminRedirect.headers.get("location"), base).pathname, "/admin/login");
+  const oldLoginRedirect = await fetch(`${base}/login?next=%2Fadmin`, { redirect: "manual" });
+  assert.equal(oldLoginRedirect.status, 307);
+  assert.equal(new URL(oldLoginRedirect.headers.get("location"), base).pathname, "/admin/login");
+  if (process.env.CATEGORY_UI_TEST === "1") {
+    const { testAdminLoginUi } = await import("./test-admin-login-ui.mjs");
+    await testAdminLoginUi(base, loginPassword);
+  }
+
+  const customerPath = "/api/admin/customers";
+  const createdCookie = await createSession("customer", "created@integration.test");
+  await sql`update users set password_hash = ${loginHash} where email = 'created@integration.test'`;
+  assert.equal((await request("GET", customerPath)).status, 401);
+  assert.equal((await request("GET", customerPath, customer)).status, 403);
+  assert.equal((await request("POST", customerPath, admin, {})).status, 405);
+  const customerList = await (await request("GET", customerPath, admin)).json();
+  const createdCustomer = customerList.data.find((entry) => entry.email === "created@integration.test");
+  assert.ok(createdCustomer);
+  assert.equal("passwordHash" in createdCustomer, false);
+  const [adminUser] = await sql`select id from users where role = 'admin' limit 1`;
+  assert.equal(customerList.data.some((entry) => entry.id === adminUser.id), false);
+  assert.equal((await request("DELETE", `${customerPath}/${adminUser.id}`, admin)).status, 404);
+  assert.equal((await request("PUT", `${customerPath}/${createdCustomer.id}`, admin, {})).status, 405);
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, admin, {})).status, 400);
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, admin, { active: "false" })).status, 400);
+  assert.equal((await request("PATCH", `${customerPath}/invalid`, admin, { active: false })).status, 400);
+  assert.equal((await request("PATCH", `${customerPath}/2147483647`, admin, { active: false })).status, 404);
+  assert.equal((await request("PATCH", `${customerPath}/${adminUser.id}`, admin, { active: false })).status, 404);
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, customer, { active: false })).status, 403);
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, admin, { active: false }, "http://evil.example")).status, 403);
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, admin, { active: false })).status, 200);
+  const inactiveCustomers = (await (await request("GET", customerPath, admin)).json()).data;
+  assert.equal(inactiveCustomers.find((entry) => entry.id === createdCustomer.id).isActive, false);
+  assert.equal((await sql`select count(*)::int as count from user_sessions where user_id = ${createdCustomer.id}`)[0].count, 0);
+  assert.equal((await login("/api/auth/login", "created@integration.test")).status, 401);
+  assert.equal((await (await request("GET", "/api/auth/session", createdCookie)).json()).data.authenticated, false);
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, admin, { active: true })).status, 200);
+  assert.equal((await (await request("GET", "/api/auth/session", createdCookie)).json()).data.authenticated, false);
+  assert.equal((await login("/api/auth/login", "created@integration.test")).status, 200);
+  assert.equal((await request("DELETE", `${customerPath}/${createdCustomer.id}`, customer)).status, 403);
+  assert.equal((await request("DELETE", `${customerPath}/${createdCustomer.id}`, admin, undefined, "http://evil.example")).status, 403);
+
+  const productsPath = "/api/admin/products";
+  const newProduct = {
+    name: "Created product", slug: "created-product", brand: "Brand",
+    categoryId: null, audience: "unisex", description: "",
+  };
+  assert.equal((await request("GET", productsPath)).status, 401);
+  assert.equal((await request("GET", productsPath, customer)).status, 403);
+  assert.equal((await request("POST", productsPath, admin, newProduct, "http://evil.example")).status, 403);
+  assert.equal((await request("POST", productsPath, admin, { ...newProduct, name: "bad\0name" })).status, 400);
+  assert.equal((await request("POST", productsPath, admin, newProduct)).status, 201);
+  assert.equal((await request("POST", productsPath, admin, newProduct)).status, 409);
+  const productsList = await (await request("GET", productsPath, admin)).json();
+  const createdProduct = productsList.data.find((entry) => entry.slug === newProduct.slug);
+  assert.ok(createdProduct);
+  assert.equal((await request("PUT", `${productsPath}/${createdProduct.id}`, admin, {
+    ...newProduct, name: "Updated product",
+  })).status, 200);
+  assert.equal((await request("PATCH", `${productsPath}/${createdProduct.id}`, admin, { active: false })).status, 200);
+  assert.equal((await sql`select is_active from products where id = ${createdProduct.id}`)[0].is_active, false);
+  assert.equal((await request("PATCH", `${productsPath}/${createdProduct.id}`, admin, { active: true })).status, 200);
+  const inventoryPath = `${productsPath}/${createdProduct.id}/inventory`;
+  const colorInput = { action: "saveColor", input: { name: "Zelená", hexCode: "#112233" } };
+  assert.equal((await request("GET", inventoryPath)).status, 401);
+  assert.equal((await request("GET", inventoryPath, customer)).status, 403);
+  assert.equal((await request("POST", inventoryPath, admin, colorInput, "http://evil.example")).status, 403);
+  assert.equal((await request("POST", inventoryPath, admin, { ...colorInput, input: { name: "", hexCode: "invalid" } })).status, 400);
+  assert.equal((await request("POST", inventoryPath, admin, colorInput)).status, 200);
+  assert.equal((await request("POST", inventoryPath, admin, colorInput)).status, 409);
+  let inventory = (await (await request("GET", inventoryPath, admin)).json()).data;
+  assert.equal(inventory.length, 1);
+  const inventoryColorId = inventory[0].id;
+  const variantInput = {
+    action: "saveVariant", colorId: inventoryColorId,
+    input: { sku: "INVENTORY-M", size: "M", price: "20.50", stock: 5, isActive: true },
+  };
+  assert.equal((await request("POST", inventoryPath, admin, { ...variantInput, input: { ...variantInput.input, stock: -1 } })).status, 400);
+  assert.equal((await request("POST", inventoryPath, admin, variantInput)).status, 200);
+  assert.equal((await request("POST", inventoryPath, admin, variantInput)).status, 409);
+  assert.equal((await request("POST", inventoryPath, admin, {
+    ...variantInput, input: { ...variantInput.input, sku: "INVENTORY-S", size: "S" },
+  })).status, 200);
+  inventory = (await (await request("GET", inventoryPath, admin)).json()).data;
+  assert.deepEqual(inventory[0].variants.map((item) => item.size), ["S", "M"]);
+  const variantId = inventory[0].variants[1].id;
+  const [customerOrder] = await sql`
+    insert into orders (user_id, customer_email, order_number, items_subtotal, shipping_cost, total_price,
+      shipping_recipient, shipping_street, shipping_city, shipping_postal_code, shipping_phone)
+    values (${createdCustomer.id}, 'created@integration.test', 'DELETE-ME', 20.50, 0, 20.50,
+      'Test User', 'Street', 'City', '12345', '123')
+    returning id
+  `;
+  await sql`
+    insert into order_items (order_id, product_variant_id, product_name, sku, quantity, unit_price)
+    values (${customerOrder.id}, ${variantId}, 'Product', 'INVENTORY-M', 1, 20.50)
+  `;
+  await sql`insert into favorites (user_id, product_color_id) values (${createdCustomer.id}, ${inventoryColorId})`;
+  const [customerCart] = await sql`insert into carts (user_id) values (${createdCustomer.id}) returning id`;
+  await sql`insert into cart_items (cart_id, product_variant_id, quantity) values (${customerCart.id}, ${variantId}, 1)`;
+  assert.equal((await request("PATCH", `${customerPath}/${createdCustomer.id}`, admin, { active: false })).status, 200);
+  assert.equal((await sql`select count(*)::int as count from orders where id = ${customerOrder.id}`)[0].count, 1);
+  assert.equal((await sql`select count(*)::int as count from favorites where user_id = ${createdCustomer.id}`)[0].count, 1);
+  assert.equal((await sql`select count(*)::int as count from carts where id = ${customerCart.id}`)[0].count, 1);
+  assert.equal((await request("DELETE", `${customerPath}/${createdCustomer.id}`, admin)).status, 200);
+  assert.equal((await sql`select count(*)::int as count from users where id = ${createdCustomer.id}`)[0].count, 0);
+  assert.equal((await sql`select count(*)::int as count from orders where id = ${customerOrder.id}`)[0].count, 0);
+  assert.equal((await sql`select count(*)::int as count from order_items where order_id = ${customerOrder.id}`)[0].count, 0);
+  assert.equal((await sql`select count(*)::int as count from user_sessions where user_id = ${createdCustomer.id}`)[0].count, 0);
+  assert.equal((await sql`select count(*)::int as count from favorites where user_id = ${createdCustomer.id}`)[0].count, 0);
+  assert.equal((await sql`select count(*)::int as count from carts where id = ${customerCart.id}`)[0].count, 0);
+  assert.equal((await sql`select count(*)::int as count from cart_items where cart_id = ${customerCart.id}`)[0].count, 0);
+  assert.equal((await request("POST", inventoryPath, admin, {
+    ...variantInput, variantId, input: { ...variantInput.input, stock: 7, isActive: false },
+  })).status, 200);
+  assert.equal((await request("POST", inventoryPath, admin, {
+    action: "deleteColor", colorId: inventoryColorId,
+  })).status, 409);
+  const updatedProducts = (await (await request("GET", productsPath, admin)).json()).data;
+  const inventoryProduct = updatedProducts.find((item) => item.id === createdProduct.id);
+  assert.equal(inventoryProduct.variantCount, 2);
+  assert.equal(inventoryProduct.activeVariantCount, 1);
+  assert.deepEqual(inventoryProduct.skus.sort(), ["INVENTORY-M", "INVENTORY-S"]);
+  const catalogInventory = (await (await request("GET", `/api/products?colorId=${inventoryColorId}`)).json()).data;
+  assert.equal(catalogInventory.length, 1);
+  assert.equal(catalogInventory[0].stock, 5);
+  const [otherUser] = await sql`select id from users where email = 'other@integration.test'`;
+  await sql`insert into favorites (user_id, product_color_id) values (${otherUser.id}, ${inventoryColorId})`;
+  await sql`insert into product_images (product_color_id, image_url, is_primary) values (${inventoryColorId}, '/color-test.jpg', true)`;
+  assert.equal((await request("POST", inventoryPath, admin, {
+    action: "saveColor", colorId: inventoryColorId, input: { name: "Modrá", hexCode: "#abcdef" },
+  })).status, 200);
+  const [inventoryColor] = await sql`select color_name from product_colors where id = ${inventoryColorId}`;
+  assert.equal(inventoryColor.color_name, "Modrá");
+  assert.equal((await sql`select count(*)::int as count from favorites where user_id = ${otherUser.id} and product_color_id = ${inventoryColorId}`)[0].count, 1);
+  inventory = (await (await request("GET", inventoryPath, admin)).json()).data;
+  assert.equal(inventory[0].imageUrl, "/color-test.jpg");
+  assert.equal(inventory[0].variants.length, 2);
+  await sql`delete from favorites where user_id = ${otherUser.id} and product_color_id = ${inventoryColorId}`;
+  await sql`delete from product_images where product_color_id = ${inventoryColorId}`;
+  assert.equal((await request("POST", inventoryPath, admin, {
+    action: "saveColor", input: { name: "Prázdna", hexCode: "#000000" },
+  })).status, 200);
+  inventory = (await (await request("GET", inventoryPath, admin)).json()).data;
+  const emptyColor = inventory.find((entry) => entry.name === "Prázdna");
+  assert.equal((await request("POST", inventoryPath, admin, { action: "deleteColor", colorId: emptyColor.id })).status, 200);
+  const batch = { action: "createVariants", colorId: inventoryColorId, input: { sizes: ["XS", "XL"], price: "30.50" } };
+  assert.equal((await request("POST", inventoryPath, customer, batch)).status, 403);
+  assert.equal((await request("POST", inventoryPath, admin, { ...batch, input: { ...batch.input, sizes: ["S", "35"] } })).status, 400);
+  assert.equal((await request("POST", inventoryPath, admin, batch)).status, 200);
+  const batchRows = await sql`select size, stock, price, sku from product_variants where product_color_id = ${inventoryColorId} and size in ('XS', 'XL') order by size`;
+  assert.equal(batchRows.length, 2);
+  assert.ok(batchRows.every((row) => row.stock === 0 && row.price === "30.50" && row.sku.startsWith("VT-")));
+  assert.notEqual(batchRows[0].sku, batchRows[1].sku);
+  assert.equal((await request("POST", inventoryPath, admin, { ...batch, input: { ...batch.input, sizes: ["XS", "XXL"] } })).status, 409);
+  assert.equal((await sql`select count(*)::int as count from product_variants where product_color_id = ${inventoryColorId} and size = 'XXL'`)[0].count, 0);
+  assert.equal((await request("POST", inventoryPath, admin, { ...batch, input: { sizes: ["35", "50"], price: "14" } })).status, 200);
+  assert.equal((await request("POST", "/api/admin/products/2147483647/inventory", admin, variantInput)).status, 404);
+  if (process.env.CATEGORY_UI_TEST === "1") {
+    await createSession("customer", "browser@integration.test");
+    await createSession("customer", "inactive-browser@integration.test");
+    await sql`update users set is_active = false where email = 'inactive-browser@integration.test'`;
+    const { testAdminManagementUi } = await import("./test-admin-management-ui.mjs");
+    await testAdminManagementUi(base, admin, () => createSession("customer", "new-browser@integration.test"));
   }
 
   const path = "/api/admin/categories";
@@ -247,6 +467,81 @@ try {
     insert into product_images (product_color_id, image_url, is_primary)
     values (${color.id}, '/test-image.jpg', true)
   `;
+  const imagePath = `/api/admin/product-images/${color.id}`;
+  const image = await sharp({ create: { width: 3, height: 3, channels: 3, background: "red" } }).png().toBuffer();
+  function imageForm(content, type = "image/png") {
+    const form = new FormData();
+    form.append("image", new Blob([content], { type }), "image.png");
+    return form;
+  }
+  async function imageRequest(method, cookie, body, origin = base) {
+    return fetch(`${base}${imagePath}`, {
+      method,
+      headers: { ...(cookie ? { cookie } : {}), origin },
+      body,
+    });
+  }
+  assert.equal((await imageRequest("POST", customer, imageForm(image))).status, 403);
+  assert.equal((await imageRequest("POST", admin, imageForm(Buffer.from("invalid")))).status, 400);
+  assert.equal((await imageRequest("POST", admin, imageForm(image))).status, 200);
+  assert.equal((await imageRequest("POST", admin, imageForm(image))).status, 200);
+  const galleryPath = `/api/admin/product-images/${color.id}`;
+  let gallery = (await (await request("GET", `${productsPath}/${product.id}/inventory`, admin)).json()).data
+    .find((entry) => entry.id === color.id).images;
+  assert.equal(gallery.length, 3);
+  const imageOrder = gallery.map((entry) => entry.id).reverse();
+  assert.equal((await request("PATCH", galleryPath, customer, { type: "order", imageIds: imageOrder })).status, 403);
+  assert.equal((await request("PATCH", galleryPath, admin, { type: "order", imageIds: [imageOrder[0]] })).status, 409);
+  assert.equal((await request("PATCH", galleryPath, admin, { type: "order", imageIds: imageOrder })).status, 200);
+  assert.equal((await request("PATCH", galleryPath, admin, { type: "primary", imageId: imageOrder[1] })).status, 200);
+  gallery = (await (await request("GET", `${productsPath}/${product.id}/inventory`, admin)).json()).data
+    .find((entry) => entry.id === color.id).images;
+  assert.deepEqual(gallery.map((entry) => entry.id), imageOrder);
+  assert.equal(gallery.find((entry) => entry.isPrimary).id, imageOrder[1]);
+  const productDetail = (await (await request("GET", "/api/products/order-product")).json()).data;
+  assert.deepEqual(productDetail.colors.find((entry) => entry.id === color.id).images.map((entry) => entry.url), gallery.map((entry) => entry.url));
+  for (const entry of gallery.filter((item) => item.url.startsWith("/api/product-images/"))) {
+    assert.equal((await request("PATCH", galleryPath, admin, { type: "delete", imageId: entry.id })).status, 200);
+  }
+  assert.equal((await imageRequest("PUT", null, imageForm(image))).status, 401);
+  assert.equal((await imageRequest("PUT", customer, imageForm(image))).status, 403);
+  assert.equal((await imageRequest("PUT", admin, imageForm(image), "http://evil.example")).status, 403);
+  assert.equal((await imageRequest("PUT", admin, imageForm(Buffer.from("not an image")))).status, 400);
+  assert.equal((await imageRequest("PUT", admin, imageForm(image, "image/jpeg"))).status, 400);
+  assert.equal((await imageRequest("PUT", admin, imageForm(Buffer.alloc(5 * 1024 * 1024 + 1)))).status, 400);
+  assert.equal((await imageRequest("PUT", admin, imageForm(image))).status, 200);
+  const [uploaded] = await sql`select image_url from product_images where product_color_id = ${color.id} and is_primary`;
+  const served = await fetch(`${base}${uploaded.image_url}`);
+  assert.equal(served.status, 200);
+  assert.equal(served.headers.get("content-type"), "image/webp");
+  assert.equal((await sharp(Buffer.from(await served.arrayBuffer())).metadata()).format, "webp");
+  const catalog = await (await request("GET", `/api/products?colorIds=${color.id}`)).text();
+  assert.match(catalog, /api\/product-images\//);
+  await sql`insert into product_images (product_color_id, image_url, is_primary) values (${color.id}, '/fallback.jpg', false)`;
+  assert.equal((await imageRequest("DELETE", admin)).status, 200);
+  const [fallback] = await sql`select image_url from product_images where product_color_id = ${color.id} and is_primary`;
+  assert.equal(fallback.image_url, "/fallback.jpg");
+  assert.equal((await fetch(`${base}${uploaded.image_url}`)).status, 404);
+  assert.equal((await imageRequest("DELETE", admin)).status, 200);
+  const withoutImage = await (await request("GET", `/api/products?colorIds=${color.id}`)).text();
+  assert.match(withoutImage, /Order Product/);
+  if (process.env.CATEGORY_UI_TEST === "1") {
+    const { testProductImagesUi } = await import("./test-product-images-ui.mjs");
+    await testProductImagesUi({ base, cookie: admin, colorId: color.id, image });
+  }
+  await sql`insert into product_images (product_color_id, image_url, is_primary) values (${color.id}, '/test-image.jpg', true)`;
+  if (process.env.IMAGE_DOCKER_TEST === "1") {
+    const { testProductImagesDocker } = await import("./test-product-images-docker.mjs");
+    await testProductImagesDocker({
+      databaseUrl,
+      port: await unusedPort(),
+      cookie: admin,
+      colorId: color.id,
+      image,
+    });
+    await sql`delete from product_images where product_color_id = ${color.id} and is_primary`;
+    await sql`insert into product_images (product_color_id, image_url, is_primary) values (${color.id}, '/test-image.jpg', true)`;
+  }
   const favoritesPath = "/api/account/favorites";
   const favoriteColor = `${favoritesPath}/${color.id}`;
   for (const [method, target] of [
@@ -311,13 +606,12 @@ try {
   assert.match(detailHtml, /Test Courier/);
   assert.equal((await request("GET", "/account/orders/TEST-ORDER-1", otherCustomer)).status, 404);
   assert.equal((await request("GET", "/account/orders/TEST-ORDER-1")).url.includes("/login"), true);
-  await sql`insert into shipping_methods (code, name, price) values ('courier', 'New Courier', 2)`;
   const [cart] = await sql`
     insert into carts (user_id) values (${customerUser.id})
     on conflict (user_id) do update set user_id = excluded.user_id returning id
   `;
   await sql`insert into cart_items (cart_id, product_variant_id, quantity) values (${cart.id}, ${variant.id}, 1)`;
-  const checkout = await request("POST", "/api/orders", customer, {
+  const checkoutDetails = {
     email: "customer@integration.test",
     firstName: "Test",
     lastName: "User",
@@ -328,15 +622,20 @@ try {
     country: "SK",
     shippingMethod: "courier",
     paymentMethod: "cod",
-  });
+  };
+  await sql`update products set is_active = false where id = ${product.id}`;
+  assert.equal((await request("POST", "/api/orders", customer, checkoutDetails)).status, 409);
+  await sql`update products set is_active = true where id = ${product.id}`;
+  const checkout = await request("POST", "/api/orders", customer, checkoutDetails);
   assert.equal(checkout.status, 201, await checkout.clone().text());
   const createdNumber = (await checkout.json()).data.orderNumber;
   const [createdOrder] = await sql`
-    select shipping_method, payment_method from orders where order_number = ${createdNumber}
+    select shipping_method, payment_method, shipping_cost from orders where order_number = ${createdNumber}
   `;
-  assert.equal(createdOrder.shipping_method, "New Courier");
+  assert.equal(createdOrder.shipping_method, "Kuriér na adresu");
   assert.equal(createdOrder.payment_method, "cod");
-  assert.match(await (await request("GET", `/account/orders/${createdNumber}`, customer)).text(), /New Courier/);
+  assert.equal(createdOrder.shipping_cost, "5.90");
+  assert.match(await (await request("GET", `/account/orders/${createdNumber}`, customer)).text(), /Kuriér na adresu/);
   console.log("Category API integration tests passed.");
 } catch (error) {
   console.error(error);
@@ -350,4 +649,5 @@ try {
   }
   if (sql) await sql.end({ timeout: 5 });
   if (containerId) command("docker", ["rm", "--force", containerId]);
+  if (imageDirectory) await rm(imageDirectory, { recursive: true, force: true });
 }
