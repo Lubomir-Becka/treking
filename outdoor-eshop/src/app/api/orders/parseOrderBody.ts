@@ -15,7 +15,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function parseOrderBody(value: unknown): OrderBodyInput | null {
-  if (!isRecord(value)) {
+  if (!isRecord(value) || value.termsAccepted !== true) {
     return null;
   }
 

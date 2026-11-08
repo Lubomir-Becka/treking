@@ -22,6 +22,10 @@ test("rejects invalid cart item IDs before calling the repository", async () => 
     () => cartUseCases.removeItem({ type: "authenticated", userId: 1 }, -1),
     { message: "INVALID_ITEM" },
   );
+  assert.throws(
+    () => cartUseCases.addItem({ type: "authenticated", userId: 1 }, 2_147_483_648, 1),
+    { message: "INVALID_VARIANT" },
+  );
 });
 
 test("delegates guest cart merging to the repository", async () => {

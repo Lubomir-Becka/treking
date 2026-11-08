@@ -8,6 +8,10 @@ function assertQuantity(quantity: number) {
   }
 }
 
+function validId(id: number) {
+  return Number.isInteger(id) && id > 0 && id <= 2_147_483_647;
+}
+
 export function createCartUseCases(repository: CartRepository) {
   return {
     getCart(actor: CartActor) {
@@ -15,20 +19,20 @@ export function createCartUseCases(repository: CartRepository) {
     },
     addItem(actor: CartActor, variantId: number, quantity: number) {
       assertQuantity(quantity);
-      if (!Number.isInteger(variantId) || variantId < 1) {
+      if (!validId(variantId)) {
         throw new Error("INVALID_VARIANT");
       }
       return repository.addItem(actor, variantId, quantity);
     },
     updateItem(actor: CartActor, itemId: number, quantity: number) {
       assertQuantity(quantity);
-      if (!Number.isInteger(itemId) || itemId < 1) {
+      if (!validId(itemId)) {
         throw new Error("INVALID_ITEM");
       }
       return repository.updateItem(actor, itemId, quantity);
     },
     removeItem(actor: CartActor, itemId: number) {
-      if (!Number.isInteger(itemId) || itemId < 1) {
+      if (!validId(itemId)) {
         throw new Error("INVALID_ITEM");
       }
       return repository.removeItem(actor, itemId);

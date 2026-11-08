@@ -39,8 +39,8 @@ export function AccountPage({
       <div className={styles.accountLayout}>
         <aside className={styles.sidebar}>
           <nav aria-label="Navigácia účtu">
-            <Link className={styles.activeNav} href="/account">Prehľad profilu</Link>
-            <Link href="/account#orders">História objednávok <b>{accountData.orders.length}</b></Link>
+            <a className={styles.activeNav} href="#profile">Prehľad profilu</a>
+            <a href="#orders">História objednávok <b>{accountData.orders.length}</b></a>
           </nav>
         </aside>
 

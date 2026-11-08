@@ -1,6 +1,6 @@
 import type { PasswordServicePort } from "../domain/PasswordServicePort";
 import type { UserAccountRepository } from "../domain/UserAccountRepository";
-import { isValidCustomerEmail } from "../../../shared/domain/email";
+import { isValidRegistration } from "../../../shared/domain/contactValidation";
 import { createCustomerSession } from "./CreateCustomerSession";
 
 export type RegisterCustomerInput = {
@@ -20,16 +20,7 @@ export function createRegisterCustomer(
 ) {
   return async function register(input: RegisterCustomerInput) {
     const email = input.email.trim().toLowerCase();
-    if (
-      !isValidCustomerEmail(email) ||
-      input.password.length < 8 ||
-      new TextEncoder().encode(input.password).length > 72 ||
-      !input.firstName.trim() ||
-      input.firstName.trim().length > 50 ||
-      !input.lastName.trim() ||
-      input.lastName.trim().length > 50 ||
-      (input.phone !== undefined && input.phone.trim().length > 20)
-    ) {
+    if (!isValidRegistration(input)) {
       throw new Error("INVALID_REGISTRATION");
     }
     if (await accounts.findByEmail(email)) {

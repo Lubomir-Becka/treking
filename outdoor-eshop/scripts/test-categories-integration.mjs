@@ -146,6 +146,19 @@ try {
   const loginHash = await bcrypt.hash(loginPassword, 4);
   await sql`update users set password_hash = ${loginHash} where email in ('admin@integration.test', 'customer@integration.test')`;
   const login = (path, email) => request("POST", path, undefined, { email, password: loginPassword });
+  const invalidRegistration = await request("POST", "/api/auth/register", undefined, {
+    email: "invalid-phone@integration.test",
+    password: loginPassword,
+    firstName: "Jana",
+    lastName: "Nová",
+    phone: "abcdefgh",
+  });
+  assert.equal(invalidRegistration.status, 400);
+  assert.match((await invalidRegistration.json()).error, /Telefón/);
+  assert.equal((await request("POST", "/api/auth/login", undefined, {
+    email: "customer@integration.test",
+    password: "a".repeat(73),
+  })).status, 401);
   const adminThroughCustomer = await login("/api/auth/login", "admin@integration.test");
   assert.equal(adminThroughCustomer.status, 401);
   assert.equal(adminThroughCustomer.headers.get("set-cookie"), null);
@@ -157,6 +170,21 @@ try {
   assert.equal((await customerLogin.json()).data.role, "customer");
   const customerLoginCookie = customerLogin.headers.get("set-cookie")?.split(";")[0];
   assert.ok(customerLoginCookie);
+  const profileInput = { firstName: "Test", lastName: "User" };
+  assert.equal((await request("PATCH", "/api/account/profile", undefined, { ...profileInput, phone: "1234567" })).status, 401);
+  const invalidPhone = await request("PATCH", "/api/account/profile", customerLoginCookie, { ...profileInput, phone: "123" });
+  assert.equal(invalidPhone.status, 400);
+  assert.match((await invalidPhone.json()).error, /Telefón/);
+  assert.equal((await request("PATCH", "/api/account/profile", customerLoginCookie, { ...profileInput, phone: null })).status, 400);
+  const updatedProfile = await request("PATCH", "/api/account/profile", customerLoginCookie, { ...profileInput, phone: " +421 900 123 456 " });
+  assert.equal(updatedProfile.status, 200);
+  assert.equal((await updatedProfile.json()).data.phone, "+421 900 123 456");
+  assert.equal((await sql`select phone from users where email = 'customer@integration.test'`)[0].phone, "+421 900 123 456");
+  const preservedProfile = await request("PATCH", "/api/account/profile", customerLoginCookie, profileInput);
+  assert.equal((await preservedProfile.json()).data.phone, "+421 900 123 456");
+  const clearedProfile = await request("PATCH", "/api/account/profile", customerLoginCookie, { ...profileInput, phone: "" });
+  assert.equal((await clearedProfile.json()).data.phone, null);
+  assert.equal((await sql`select phone from users where email = 'customer@integration.test'`)[0].phone, null);
   assert.equal((await request("GET", "/api/admin/products", customerLoginCookie)).status, 403);
   const failedAdminLogin = await request("POST", "/api/admin/auth/login", customerLoginCookie, {
     email: "customer@integration.test", password: loginPassword,
@@ -180,6 +208,12 @@ try {
   if (process.env.CATEGORY_UI_TEST === "1") {
     const { testAdminLoginUi } = await import("./test-admin-login-ui.mjs");
     await testAdminLoginUi(base, loginPassword);
+    const { testCheckoutUi } = await import("./test-checkout-ui.mjs");
+    await testCheckoutUi(base, customerLoginCookie);
+    const { testProfileUi } = await import("./test-profile-ui.mjs");
+    await testProfileUi(base, customerLoginCookie);
+    const { testHeaderUi } = await import("./test-header-ui.mjs");
+    await testHeaderUi(base);
   }
 
   const customerPath = "/api/admin/customers";
@@ -216,6 +250,12 @@ try {
   assert.equal((await request("DELETE", `${customerPath}/${createdCustomer.id}`, admin, undefined, "http://evil.example")).status, 403);
 
   const productsPath = "/api/admin/products";
+  assert.equal((await request("GET", `/api/products?q=${"a".repeat(201)}`)).status, 400);
+  assert.equal((await request("GET", "/api/products?colorId=2147483648")).status, 400);
+  assert.equal((await request("GET", "/api/products?limit=invalid")).status, 400);
+  assert.equal((await request("GET", "/api/products?audience=invalid")).status, 400);
+  assert.equal((await request("GET", "/api/categories?audience=invalid")).status, 400);
+  assert.equal((await request("GET", "/api/categories?audience=men&audience=women")).status, 400);
   const newProduct = {
     name: "Created product", slug: "created-product", brand: "Brand",
     categoryId: null, audience: "unisex", description: "",
@@ -224,6 +264,12 @@ try {
   assert.equal((await request("GET", productsPath, customer)).status, 403);
   assert.equal((await request("POST", productsPath, admin, newProduct, "http://evil.example")).status, 403);
   assert.equal((await request("POST", productsPath, admin, { ...newProduct, name: "bad\0name" })).status, 400);
+  const missingCategory = await request("POST", productsPath, admin, { ...newProduct, categoryId: 2_147_483_647 });
+  assert.equal(missingCategory.status, 400);
+  assert.match((await missingCategory.json()).error, /kategória neexistuje/);
+  const invalidSlug = await request("POST", productsPath, admin, { ...newProduct, slug: "Invalid slug" });
+  assert.equal(invalidSlug.status, 400);
+  assert.match((await invalidSlug.json()).error, /Slug/);
   assert.equal((await request("POST", productsPath, admin, newProduct)).status, 201);
   assert.equal((await request("POST", productsPath, admin, newProduct)).status, 409);
   const productsList = await (await request("GET", productsPath, admin)).json();
@@ -250,7 +296,10 @@ try {
     action: "saveVariant", colorId: inventoryColorId,
     input: { sku: "INVENTORY-M", size: "M", price: "20.50", stock: 5, isActive: true },
   };
-  assert.equal((await request("POST", inventoryPath, admin, { ...variantInput, input: { ...variantInput.input, stock: -1 } })).status, 400);
+  const invalidStock = await request("POST", inventoryPath, admin, { ...variantInput, input: { ...variantInput.input, stock: -1 } });
+  assert.equal(invalidStock.status, 400);
+  assert.match((await invalidStock.json()).error, /Sklad/);
+  assert.equal((await request("POST", inventoryPath, admin, { ...variantInput, colorId: 2_147_483_647 })).status, 404);
   assert.equal((await request("POST", inventoryPath, admin, variantInput)).status, 200);
   assert.equal((await request("POST", inventoryPath, admin, variantInput)).status, 409);
   assert.equal((await request("POST", inventoryPath, admin, {
@@ -361,6 +410,8 @@ try {
   assert.equal((await invalidName.json()).error, "Názov nesmie obsahovať riadiace znaky.");
   assert.equal((await request("POST", path, admin, { ...input, parentId: 2_147_483_648 })).status, 400);
   assert.equal((await request("DELETE", `${path}/2147483648`, admin)).status, 400);
+  assert.equal((await request("DELETE", `${path}/1e0`, admin)).status, 400);
+  assert.equal((await request("PUT", `${path}/01`, admin, input)).status, 400);
   assert.equal((await request("POST", path, admin, input)).status, 201);
   assert.equal((await request("POST", path, admin, input)).status, 409);
 
@@ -610,7 +661,13 @@ try {
     insert into carts (user_id) values (${customerUser.id})
     on conflict (user_id) do update set user_id = excluded.user_id returning id
   `;
-  await sql`insert into cart_items (cart_id, product_variant_id, quantity) values (${cart.id}, ${variant.id}, 1)`;
+  const [cartItem] = await sql`insert into cart_items (cart_id, product_variant_id, quantity) values (${cart.id}, ${variant.id}, 1) returning id`;
+  if (process.env.CATEGORY_UI_TEST === "1") {
+    const { testOrderSummaryUi } = await import("./test-checkout-ui.mjs");
+    await testOrderSummaryUi(base, customer);
+  }
+  assert.equal((await request("DELETE", `/api/cart/items/${cartItem.id}`, otherCustomer)).status, 404);
+  assert.equal((await request("PATCH", `/api/cart/items/${cartItem.id}e0`, customer, { quantity: 1 })).status, 400);
   const checkoutDetails = {
     email: "customer@integration.test",
     firstName: "Test",
@@ -622,7 +679,17 @@ try {
     country: "SK",
     shippingMethod: "courier",
     paymentMethod: "cod",
+    termsAccepted: true,
   };
+  const missingTerms = await request("POST", "/api/orders", customer, { ...checkoutDetails, termsAccepted: false });
+  assert.equal(missingTerms.status, 400);
+  assert.match((await missingTerms.json()).error, /súhlas/);
+  const invalidPostalCode = await request("POST", "/api/orders", customer, { ...checkoutDetails, postalCode: "invalid" });
+  assert.equal(invalidPostalCode.status, 400);
+  assert.match((await invalidPostalCode.json()).error, /PSČ/);
+  const invalidPayment = await request("POST", "/api/orders", customer, { ...checkoutDetails, paymentMethod: "card" });
+  assert.equal(invalidPayment.status, 400);
+  assert.match((await invalidPayment.json()).error, /platby/);
   await sql`update products set is_active = false where id = ${product.id}`;
   assert.equal((await request("POST", "/api/orders", customer, checkoutDetails)).status, 409);
   await sql`update products set is_active = true where id = ${product.id}`;

@@ -123,7 +123,7 @@ export function CartStep({
                     <span>{item.quantity}</span>
                     <button
                       type="button"
-                      disabled={updatingItemId === item.id}
+                      disabled={updatingItemId === item.id || item.quantity >= Math.min(item.stock, MAX_CART_ITEM_QUANTITY)}
                       onClick={() => updateQuantity(item, 1)}
                       aria-label={`Zvýšiť množstvo produktu ${item.productName}`}
                     >

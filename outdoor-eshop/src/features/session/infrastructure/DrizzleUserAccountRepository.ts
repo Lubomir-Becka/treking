@@ -18,6 +18,7 @@ function mapUser(row: typeof users.$inferSelect): UserAccount {
     email: row.email,
     firstName: row.firstName,
     lastName: row.lastName,
+    phone: row.phone,
     passwordHash: row.passwordHash,
     isActive: row.isActive === true,
     role: row.role,
@@ -68,6 +69,7 @@ export class DrizzleUserAccountRepository implements UserAccountRepository {
         ...(input.email ? { email: input.email } : {}),
         firstName: input.firstName,
         lastName: input.lastName,
+        ...(input.phone !== undefined ? { phone: input.phone } : {}),
       })
       .where(eq(users.id, id))
       .returning();

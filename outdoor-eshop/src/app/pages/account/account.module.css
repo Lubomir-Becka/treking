@@ -71,15 +71,18 @@
 .sidebar nav b { float: right; color: #849089; font-weight: 400; }
 .sidebar .activeNav { background: #0b2b20; color: #fff; }
 .dashboard { display: grid; gap: 18px; }
-.dashboardCard { padding: clamp(18px, 3vw, 28px); }
+.dashboardCard { padding: clamp(18px, 3vw, 28px); scroll-margin-top: 88px; }
 .profileForm { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 20px; max-width: 720px; }
 .profileForm label { color: #64736c; display: grid; font-size: 11px; gap: 7px; }
 .profileForm input { border: 1px solid #cbd8d0; min-height: 44px; padding: 10px 12px; }
-.profileForm button { justify-self: start; }
+.profileActions { grid-column: 1 / -1; margin-top: 6px; }
+.dashboardCard .profileSubmit { background: #0b2b20; color: #fff; min-height: 44px; padding: 13px 20px; }
+.dashboardCard .profileSubmit:disabled { cursor: not-allowed; opacity: .6; }
+.dashboardCard .profileSubmit:focus-visible { outline: 2px solid #0b2b20; outline-offset: 3px; }
 .profileHint, .profileError, .profileSuccess { font-size: 12px; grid-column: 1 / -1; margin: 0; }
 .profileHint { color: #68766f; }
-.profileError { color: #9c2e2e; }
-.profileSuccess { color: #23734c; }
+.dashboardCard .profileError { color: #9c2e2e; }
+.dashboardCard .profileSuccess { color: #23734c; }
 .cardTitle { align-items: start; display: flex; gap: 18px; justify-content: space-between; }
 .cardTitle > span { color: #76827c; font-size: 10px; line-height: 1.6; text-align: right; text-transform: uppercase; }
 .shipment { align-items: center; background: #f7faf7; display: flex; gap: 16px; padding: 12px; }
@@ -94,11 +97,13 @@
   .accountLayout { grid-template-columns: 1fr; }
   .sidebar nav { display: flex; overflow-x: auto; }
   .sidebar nav a { flex: 0 0 auto; white-space: nowrap; }
+  .sidebar nav b { margin-left: 12px; }
 }
 @media (max-width: 600px) {
   .page { padding-inline: 16px; }
   .cardTitle, .shipment { align-items: start; flex-direction: column; }
   .profileForm { grid-template-columns: 1fr; }
+  .dashboardCard .profileSubmit { width: 100%; }
   .cardTitle > span { text-align: left; }
   .shipment button { width: 100%; }
 }

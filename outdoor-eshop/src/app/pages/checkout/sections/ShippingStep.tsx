@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { CartItem } from "@/features/cart/domain/Cart";
 import type { CheckoutDetails } from "@/features/checkout/domain/checkout";
-import { isValidOrderDetails } from "@/features/checkout/domain/OrderValidation";
+import { validateOrderDetails } from "@/features/checkout/domain/OrderValidation";
 import type { ShippingOption } from "../client";
 import { formatPrice, OrderSummary } from "./OrderSummary";
 import styles from "../Checkout.module.css";
@@ -52,8 +52,9 @@ export function ShippingStep({
 
   function continueToPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isValidOrderDetails(form)) {
-      setSaveError("Skontrolujte dodacie údaje vrátane telefónneho čísla a dĺžky mena.");
+    const validationError = validateOrderDetails(form);
+    if (validationError) {
+      setSaveError(validationError);
       return;
     }
     setSaveError(null);
@@ -119,11 +120,13 @@ export function ShippingStep({
                   />
                 </div>
               ))}
-              <div className={styles.checkoutFieldFull}>
-                <label htmlFor="note">Poznámka pre expedičný tím</label>
+              <div className={`${styles.checkoutField} ${styles.checkoutFieldFull}`}>
                 <textarea
                   id="note"
+                  aria-label="Poznámka pre expedičný tím"
+                  placeholder="Poznámka pre expedičný tím (voliteľné)"
                   rows={3}
+                  maxLength={2000}
                   value={form.note}
                   onChange={(event) => updateField("note", event.target.value)}
                 />

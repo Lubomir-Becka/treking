@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseBatchVariantInput, parseColorInput, parseInventoryId, parseVariantInput } from "./AdminInventory";
+import { parseBatchVariantInput, parseColorInput, parseInventoryId, parseVariantInput, validateBatchVariantInput, validateColorInput, validateVariantInput } from "./AdminInventory";
 
 test("validates and normalizes color input", () => {
   assert.deepEqual(parseColorInput({ name: " Čierna ", hexCode: "#ABCDEF" }), {
@@ -11,6 +11,19 @@ test("validates and normalizes color input", () => {
   assert.equal(parseColorInput({ name: " ", hexCode: "#abcdef" }), null);
   assert.equal(parseColorInput({ name: "Black", hexCode: "#abcd" }), null);
   assert.equal(parseColorInput({ name: "Black\0", hexCode: "#abcdef" }), null);
+});
+
+test("reports specific color, batch and variant errors", () => {
+  assert.match(validateColorInput({ name: "Modrá", hexCode: "blue" }) ?? "", /HEX/);
+  assert.match(validateBatchVariantInput({ sizes: [], price: "1" }) ?? "", /veľkosť/);
+  assert.match(validateBatchVariantInput({ sizes: ["S", "35"], price: "1" }) ?? "", /jedného typu/);
+  assert.match(validateBatchVariantInput({ sizes: ["S"], price: "1.999" }) ?? "", /Cena/);
+  const variant = { sku: "A", size: "M", price: "1", stock: 0, isActive: true };
+  assert.equal(validateVariantInput(variant), null);
+  assert.match(validateVariantInput({ ...variant, stock: NaN }) ?? "", /Sklad/);
+  assert.match(validateVariantInput({ ...variant, stock: 2_147_483_648 }) ?? "", /Sklad/);
+  assert.match(validateVariantInput({ ...variant, sku: "" }) ?? "", /SKU/);
+  assert.match(validateVariantInput({ ...variant, isActive: "true" }) ?? "", /Stav/);
 });
 
 test("validates batch sizes and shared price", () => {

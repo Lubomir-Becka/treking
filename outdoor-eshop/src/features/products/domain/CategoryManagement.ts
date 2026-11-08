@@ -18,7 +18,7 @@ export function isCategoryId(value: number): boolean {
 }
 
 export function validateCategoryInput(value: CategoryInput): string | null {
-  if (!value.name.trim() || value.name.trim().length > 100) {
+  if (!value.name.trim() || value.name.length > 100) {
     return "Názov je povinný a môže mať najviac 100 znakov.";
   }
   if ([...value.name].some((character) => {

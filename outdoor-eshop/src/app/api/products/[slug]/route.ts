@@ -7,6 +7,9 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
+  if (slug.length > 180 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return NextResponse.json({ error: "Neplatný identifikátor produktu." }, { status: 400 });
+  }
 
   try {
     const product = await getProductDetail(slug);

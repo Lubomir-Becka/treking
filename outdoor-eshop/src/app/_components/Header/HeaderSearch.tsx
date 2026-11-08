@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { HeaderIcon } from "./HeaderIcon";
+import { isValidCatalogQuery, MAX_CATALOG_QUERY_LENGTH } from "@/features/products/domain/catalogSearch";
 import styles from "./header.module.css";
 
 const RECENT_SEARCHES_KEY = "vertex-recent-searches";
@@ -26,6 +27,7 @@ function readRecentSearches() {
 export function HeaderSearch() {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
@@ -45,6 +47,11 @@ export function HeaderSearch() {
   }, [mobileSearchOpen]);
 
   function navigateToSearch(searchQuery: string) {
+    if (!isValidCatalogQuery(searchQuery)) {
+      setSearchError("Hľadaný text môže mať najviac 200 znakov a nesmie obsahovať riadiace znaky.");
+      return;
+    }
+    setSearchError(null);
     const trimmedQuery = searchQuery.trim();
     if (trimmedQuery) {
       const searches = [
@@ -93,12 +100,14 @@ export function HeaderSearch() {
         <HeaderIcon name="search" size={17} />
         <input
           aria-label="Hľadať výbavu"
+          maxLength={MAX_CATALOG_QUERY_LENGTH}
           placeholder="Hľadať výbavu..."
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={focusSearch}
         />
       </form>
+      {searchError && <p role="alert">{searchError}</p>}
       {mobileSearchOpen && (
         <div className={styles.mobileSearchOverlay}>
           <div className={styles.mobileSearchHeader}>
@@ -107,6 +116,7 @@ export function HeaderSearch() {
               <input
                 autoFocus
                 aria-label="Hľadať výbavu"
+                maxLength={MAX_CATALOG_QUERY_LENGTH}
                 placeholder="Hľadať výbavu..."
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}

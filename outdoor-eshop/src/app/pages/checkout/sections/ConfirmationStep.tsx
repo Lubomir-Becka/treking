@@ -23,7 +23,7 @@ export function ConfirmationStep({ order }: { order: CreatedOrder | null }) {
           <p>Ak ste objednávku už odoslali, nájdete ju vo svojom zákazníckom účte.</p>
         </>
       )}
-      <Link className={styles.checkoutBack} href="/">
+      <Link className={`${styles.checkoutBack} ${styles.confirmationBack}`} href="/">
         Späť na domovskú stránku
       </Link>
     </div>

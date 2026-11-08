@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { letterSizes, numericSizes, type AdminColor, type AdminVariant } from "@/features/products/domain/AdminInventory";
+import { letterSizes, numericSizes, validateBatchVariantInput, validateColorInput, validateVariantInput, type AdminColor, type AdminVariant } from "@/features/products/domain/AdminInventory";
+import { isValidProductImage } from "@/features/products/domain/ProductImage";
 import styles from "./admin.module.css";
 
 type Props = {
@@ -156,6 +157,11 @@ export function ProductInventory({ productId, productName, onChanged, onBlockedC
 
   function saveColor(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const validationError = validateColorInput({ name: colorName, hexCode });
+    if (validationError) {
+      setMessage(validationError);
+      return;
+    }
     void mutate(endpoint, "POST", JSON.stringify({
       action: "saveColor",
       ...(colorId === null ? {} : { colorId }),
@@ -171,12 +177,18 @@ export function ProductInventory({ productId, productName, onChanged, onBlockedC
 
   function saveVariant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (variantColorId === null) return;
+    if (variantColorId === null) {
+      setMessage("Vyberte farbu variantu.");
+      return;
+    }
     const body = variantId === null
       ? { action: "createVariants", colorId: variantColorId, input: { sizes: selectedSizes, price: batchPrice } }
-      : { action: "saveVariant", colorId: variantColorId, variantId, input: { ...variant, stock: Number(variant.stock) } };
-    if (variantId === null && selectedSizes.length === 0) {
-      setMessage("Vyberte aspoň jednu veľkosť.");
+      : { action: "saveVariant", colorId: variantColorId, variantId, input: { ...variant, stock: variant.stock.trim() === "" ? NaN : Number(variant.stock) } };
+    const validationError = variantId === null
+      ? validateBatchVariantInput(body.input)
+      : validateVariantInput(body.input);
+    if (validationError) {
+      setMessage(validationError);
       return;
     }
     void mutate(endpoint, "POST", JSON.stringify(body), "application/json").then((saved) => {
@@ -205,6 +217,10 @@ export function ProductInventory({ productId, productName, onChanged, onBlockedC
     const file = fileByColor[color.id];
     if (!file) {
       setMessage("Vyberte obrázok.");
+      return;
+    }
+    if (!isValidProductImage(file)) {
+      setMessage("Povolené sú obrázky JPEG, PNG a WebP do 5 MB.");
       return;
     }
     const body = new FormData();

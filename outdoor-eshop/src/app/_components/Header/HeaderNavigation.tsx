@@ -62,16 +62,8 @@ export function HeaderNavigation() {
   }
 
   return (
-    <>
-      <nav className={styles.navigation} aria-label="Hlavná navigácia">
-        {categoryMenus()}
-      </nav>
-      <details className={styles.mobileNavigation}>
-        <summary aria-label="Menu kategórií">Menu</summary>
-        <nav className={styles.mobileNavigationContent} aria-label="Mobilná navigácia">
-          {categoryMenus()}
-        </nav>
-      </details>
-    </>
+    <nav className={styles.navigation} aria-label="Hlavná navigácia">
+      {categoryMenus()}
+    </nav>
   );
 }

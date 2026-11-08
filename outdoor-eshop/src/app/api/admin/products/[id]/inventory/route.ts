@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminVariants, deleteEmptyAdminColor, listAdminInventory, saveAdminColor, saveAdminVariant } from "@/features/products/composition/server";
-import { parseBatchVariantInput, parseColorInput, parseInventoryId, parseVariantInput } from "@/features/products/domain/AdminInventory";
+import { parseBatchVariantInput, parseColorInput, parseInventoryId, parseVariantInput, validateBatchVariantInput, validateColorInput, validateVariantInput } from "@/features/products/domain/AdminInventory";
 import { adminAccessError } from "@/shared/server/http/adminAccess";
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
@@ -48,22 +48,21 @@ export async function POST(request: Request, context: Context) {
     if (data.action === "saveColor") {
       const input = parseColorInput(data.input);
       const colorId = data.colorId === undefined ? undefined : parseInventoryId(data.colorId);
-      if (!input || colorId === null) return NextResponse.json({ error: "Skontrolujte názov a HEX farby." }, { status: 400 });
+      if (colorId === null) return NextResponse.json({ error: "Neplatná farba." }, { status: 400 });
+      if (!input) return NextResponse.json({ error: validateColorInput(data.input) }, { status: 400 });
       found = await saveAdminColor(id, input, colorId);
     } else if (data.action === "createVariants") {
       const colorId = parseInventoryId(data.colorId);
       const input = parseBatchVariantInput(data.input);
-      if (!colorId || !input) {
-        return NextResponse.json({ error: "Vyberte platné veľkosti a cenu." }, { status: 400 });
-      }
+      if (!colorId) return NextResponse.json({ error: "Neplatná farba." }, { status: 400 });
+      if (!input) return NextResponse.json({ error: validateBatchVariantInput(data.input) }, { status: 400 });
       found = await createAdminVariants(id, colorId, input);
     } else if (data.action === "saveVariant") {
       const colorId = parseInventoryId(data.colorId);
       const variantId = data.variantId === undefined ? undefined : parseInventoryId(data.variantId);
       const input = parseVariantInput(data.input);
-      if (!colorId || variantId === null || !input) {
-        return NextResponse.json({ error: "Skontrolujte údaje variantu." }, { status: 400 });
-      }
+      if (!colorId || variantId === null) return NextResponse.json({ error: "Neplatná farba alebo variant." }, { status: 400 });
+      if (!input) return NextResponse.json({ error: validateVariantInput(data.input) }, { status: 400 });
       found = await saveAdminVariant(id, colorId, input, variantId);
     } else if (data.action === "deleteColor") {
       const colorId = parseInventoryId(data.colorId);

@@ -80,10 +80,13 @@ export async function createAdminVariants(productId: number, colorId: number, in
 
 export async function saveAdminColor(productId: number, input: ColorInput, colorId?: number) {
   if (colorId === undefined) {
-    const [product] = await db.select({ id: products.id }).from(products).where(eq(products.id, productId));
-    if (!product) return false;
-    await db.insert(productColors).values({ productId, colorName: input.name, hexCode: input.hexCode });
-    return true;
+    return db.transaction(async (tx) => {
+      const [product] = await tx.select({ id: products.id }).from(products)
+        .where(eq(products.id, productId)).for("update");
+      if (!product) return false;
+      await tx.insert(productColors).values({ productId, colorName: input.name, hexCode: input.hexCode });
+      return true;
+    });
   }
   const rows = await db.update(productColors)
     .set({ colorName: input.name, hexCode: input.hexCode })
@@ -109,15 +112,17 @@ export async function deleteEmptyAdminColor(productId: number, colorId: number) 
 }
 
 export async function saveAdminVariant(productId: number, colorId: number, input: VariantInput, variantId?: number) {
-  const [color] = await db.select({ id: productColors.id }).from(productColors)
-    .where(and(eq(productColors.id, colorId), eq(productColors.productId, productId)));
-  if (!color) return false;
-  if (variantId === undefined) {
-    await db.insert(productVariants).values({ productColorId: colorId, ...input });
-    return true;
-  }
-  const rows = await db.update(productVariants).set(input)
-    .where(and(eq(productVariants.id, variantId), eq(productVariants.productColorId, colorId)))
-    .returning({ id: productVariants.id });
-  return rows.length > 0;
+  return db.transaction(async (tx) => {
+    const [color] = await tx.select({ id: productColors.id }).from(productColors)
+      .where(and(eq(productColors.id, colorId), eq(productColors.productId, productId))).for("update");
+    if (!color) return false;
+    if (variantId === undefined) {
+      await tx.insert(productVariants).values({ productColorId: colorId, ...input });
+      return true;
+    }
+    const rows = await tx.update(productVariants).set(input)
+      .where(and(eq(productVariants.id, variantId), eq(productVariants.productColorId, colorId)))
+      .returning({ id: productVariants.id });
+    return rows.length > 0;
+  });
 }

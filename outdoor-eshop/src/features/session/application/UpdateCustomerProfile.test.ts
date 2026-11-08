@@ -12,6 +12,7 @@ const user: UserAccount = {
   email: "customer@example.com",
   firstName: "Jana",
   lastName: "Nová",
+  phone: "+421900123456",
   passwordHash: "hashed-password",
   isActive: true,
   role: "customer",
@@ -121,4 +122,35 @@ test("rejects an empty email instead of silently ignoring it", async () => {
     }),
     { message: "INVALID_EMAIL" },
   );
+});
+
+test("rejects control characters in names", async () => {
+  const setupResult = setup();
+  await assert.rejects(
+    setupResult.update(7, { firstName: "Jana\0", lastName: "Nová" }),
+    { message: "INVALID_PROFILE" },
+  );
+});
+
+test("updates, clears or preserves an optional phone without requiring a password", async () => {
+  const setupResult = setup();
+  const input = { firstName: "Jana", lastName: "Nová" };
+  const updated = await setupResult.update(7, { ...input, phone: " +421 900 123 456 " });
+  assert.equal(updated.phone, "+421 900 123 456");
+  assert.equal(setupResult.getVerifyCalls(), 0);
+  const cleared = await setupResult.update(7, { ...input, phone: " " });
+  assert.equal(cleared.phone, null);
+  const unchanged = await setupResult.update(7, input);
+  assert.equal(unchanged.phone, user.phone);
+});
+
+test("rejects invalid phone numbers before updating the profile", async () => {
+  const setupResult = setup();
+  for (const phone of ["123", "abcdefgh", "1".repeat(21), "\n1234567"]) {
+    await assert.rejects(
+      setupResult.update(7, { firstName: "Jana", lastName: "Nová", phone }),
+      { message: "INVALID_PHONE" },
+    );
+    assert.equal(setupResult.getUpdated(), null);
+  }
 });

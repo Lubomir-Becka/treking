@@ -1,10 +1,12 @@
 import type { PasswordServicePort } from "../domain/PasswordServicePort";
 import type { UserAccountRepository } from "../domain/UserAccountRepository";
 import { isValidCustomerEmail } from "../../../shared/domain/email";
+import { isValidPassword, isValidPersonName, validateOptionalPhone } from "../../../shared/domain/contactValidation";
 
 export type UpdateCustomerProfileInput = {
   firstName: string;
   lastName: string;
+  phone?: string;
   email?: string;
   currentPassword?: string;
 };
@@ -24,14 +26,17 @@ export function createUpdateCustomerProfile(
     if (!user || !user.isActive) {
       throw new Error("ACCOUNT_NOT_FOUND");
     }
-    if (!firstName || firstName.length > 50 || !lastName || lastName.length > 50) {
+    if (!isValidPersonName(input.firstName) || !isValidPersonName(input.lastName)) {
       throw new Error("INVALID_PROFILE");
+    }
+    if (input.phone !== undefined && validateOptionalPhone(input.phone)) {
+      throw new Error("INVALID_PHONE");
     }
 
     const email = input.email?.trim().toLowerCase();
     if (
       input.email !== undefined &&
-      (!email || !isValidCustomerEmail(email))
+      (!email || !isValidCustomerEmail(input.email))
     ) {
       throw new Error("INVALID_EMAIL");
     }
@@ -39,7 +44,7 @@ export function createUpdateCustomerProfile(
     const emailChanged = email !== undefined && email !== user.email;
     if (emailChanged && email) {
       if (
-        !input.currentPassword ||
+        !input.currentPassword || !isValidPassword(input.currentPassword) ||
         !(await passwords.verify(input.currentPassword, user.passwordHash))
       ) {
         throw new Error("INVALID_CREDENTIALS");
@@ -55,6 +60,7 @@ export function createUpdateCustomerProfile(
       const updatedUser = await accounts.updateProfile(userId, {
         firstName,
         lastName,
+        ...(input.phone === undefined ? {} : { phone: input.phone.trim() || null }),
         ...(emailChanged && email ? { email } : {}),
       });
 
@@ -63,6 +69,7 @@ export function createUpdateCustomerProfile(
         email: updatedUser.email,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
+        phone: updatedUser.phone,
       };
     } catch (error) {
       if (

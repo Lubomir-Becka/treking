@@ -37,6 +37,7 @@ export type CustomerProfile = {
   email: string;
   firstName: string;
   lastName: string;
+  phone: string | null;
 };
 
 export interface CustomerAccountRepository {

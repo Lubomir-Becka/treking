@@ -277,6 +277,11 @@
   text-decoration: underline;
 }
 
+.confirmationBack {
+  display: block;
+  margin-top: 24px;
+}
+
 .checkoutOptions {
   display: grid;
   gap: 10px;
@@ -343,6 +348,11 @@
 .checkoutField textarea:focus {
   border-color: #1b382b;
   outline: 0;
+}
+
+.checkoutField textarea {
+  resize: vertical;
+  width: 100%;
 }
 
 .checkoutTrust {

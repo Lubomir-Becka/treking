@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isValidCreateOrderInput, isValidOrderDetails } from "./OrderValidation";
+import { isValidCreateOrderInput, isValidOrderDetails, validateOrderDetails } from "./OrderValidation";
 import type { CreateOrderInput } from "./OrderRepository";
 
 const validOrder: CreateOrderInput = {
@@ -25,6 +25,14 @@ test("accepts valid order details", () => {
   assert.equal(isValidOrderDetails({ ...details, phone: "123" }), false);
 });
 
+test("reports specific checkout validation errors", () => {
+  assert.match(validateOrderDetails({ ...validOrder, phone: "123" }) ?? "", /telefónne/);
+  assert.match(validateOrderDetails({ ...validOrder, postalCode: "abc" }) ?? "", /PSČ/);
+  assert.match(validateOrderDetails({ ...validOrder, firstName: "a".repeat(50), lastName: "b".repeat(50) }) ?? "", /spolu/);
+  assert.match(validateOrderDetails({ ...validOrder, note: "x".repeat(2001) }) ?? "", /Poznámka/);
+  assert.match(validateOrderDetails({ ...validOrder, country: "SVK" }) ?? "", /Krajina/);
+});
+
 test("rejects invalid email, required fields, and oversized notes", () => {
   assert.equal(
     isValidCreateOrderInput({ ...validOrder, email: "not-an-email" }),
@@ -38,4 +46,8 @@ test("rejects invalid email, required fields, and oversized notes", () => {
     isValidCreateOrderInput({ ...validOrder, note: "x".repeat(2001) }),
     false,
   );
+  assert.equal(isValidCreateOrderInput({ ...validOrder, phone: "abcdefgh" }), false);
+  assert.equal(isValidCreateOrderInput({ ...validOrder, postalCode: "abcd" }), false);
+  assert.equal(isValidCreateOrderInput({ ...validOrder, postalCode: "058 01" }), true);
+  assert.equal(isValidCreateOrderInput({ ...validOrder, street: "Street\0" }), false);
 });

@@ -10,6 +10,7 @@ const user = {
   email: "customer@example.com",
   firstName: "Jana",
   lastName: "Nova",
+  phone: null,
   passwordHash: "hash",
   isActive: true,
   role: "customer" as const,
@@ -43,6 +44,8 @@ test("registration rejects invalid email and oversized bcrypt input", async () =
   const register = setup(async () => user);
   await assert.rejects(register({ ...input, email: "not-an-email" }), { message: "INVALID_REGISTRATION" });
   await assert.rejects(register({ ...input, password: "é".repeat(37) }), { message: "INVALID_REGISTRATION" });
+  await assert.rejects(register({ ...input, phone: "abcdefgh" }), { message: "INVALID_REGISTRATION" });
+  await assert.rejects(register({ ...input, firstName: "Jana\0" }), { message: "INVALID_REGISTRATION" });
 });
 
 test("registration handles concurrent duplicate email inserts", async () => {

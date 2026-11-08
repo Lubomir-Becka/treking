@@ -21,7 +21,7 @@ export function OrderSummary({
     (total, item) => total + item.unitPrice * item.quantity,
     0,
   );
-  const total = shippingCost == null ? null : subtotal + shippingCost;
+  const total = subtotal + (shippingCost ?? 0);
 
   return (
     <aside className={styles.checkoutSummary}>
@@ -45,8 +45,8 @@ export function OrderSummary({
         </div>
       </div>
       <div className={styles.checkoutTotal}>
-        <span>Spolu s DPH</span>
-        <strong>{total === null ? "Bude upresnené" : formatPrice(total)}</strong>
+        <span>{shippingCost == null ? "Spolu s DPH bez dopravy" : "Spolu s DPH"}</span>
+        <strong>{formatPrice(total)}</strong>
       </div>
     </aside>
   );

@@ -13,6 +13,7 @@ test("session lookup reads the current role and rejects inactive or missing acco
     email: "customer@example.com",
     firstName: "Jana",
     lastName: "Nová",
+    phone: null,
     passwordHash: "hash",
     isActive: true,
     role: "customer",

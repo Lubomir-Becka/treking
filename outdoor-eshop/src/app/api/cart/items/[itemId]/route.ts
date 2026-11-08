@@ -5,6 +5,11 @@ import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 
 type Context = { params: Promise<{ itemId: string }> };
 
+async function itemIdFrom(context: Context) {
+  const rawId = (await context.params).itemId;
+  return /^[1-9]\d*$/.test(rawId) ? Number(rawId) : NaN;
+}
+
 export async function PATCH(request: Request, context: Context) {
   try {
     const parsedBody = await readJsonBody(request);
@@ -18,7 +23,7 @@ export async function PATCH(request: Request, context: Context) {
         { status: 400 },
       );
     }
-    const itemId = Number((await context.params).itemId);
+    const itemId = await itemIdFrom(context);
 
     return NextResponse.json({
       data: await cartUseCases.updateItem(
@@ -47,7 +52,7 @@ export async function DELETE(_request: Request, context: Context) {
     return NextResponse.json({
       data: await cartUseCases.removeItem(
         await resolveCartActor(),
-        Number((await context.params).itemId),
+        await itemIdFrom(context),
       ),
     });
   } catch (error) {
@@ -56,6 +61,9 @@ export async function DELETE(_request: Request, context: Context) {
     }
     if (error instanceof Error && error.message === "INVALID_ITEM") {
       return NextResponse.json({ error: "Neplatná položka." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "ITEM_NOT_FOUND") {
+      return NextResponse.json({ error: "Položka v košíku neexistuje." }, { status: 404 });
     }
     console.error("Cart item removal failed:", error);
     return NextResponse.json({ error: "Položku sa nepodarilo odstrániť." }, { status: 500 });

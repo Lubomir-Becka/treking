@@ -1,6 +1,6 @@
 export function isValidCustomerEmail(value: string) {
   const email = value.trim();
-  if (email.length > 100) return false;
+  if (value.length > 100 || /[\u0000-\u001f\u007f-\u009f]/u.test(value)) return false;
 
   const parts = email.split("@");
   if (parts.length !== 2) return false;

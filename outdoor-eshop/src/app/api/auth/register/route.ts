@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { registerCustomer } from "@/shared/composition/server";
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
+import { validateRegistration } from "@/shared/domain/contactValidation";
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,15 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const validationError = validateRegistration({
+      email: parsedBody.body.email,
+      password: parsedBody.body.password,
+      firstName: parsedBody.body.firstName,
+      lastName: parsedBody.body.lastName,
+      phone: parsedBody.body.phone,
+    });
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
     const requestHeaders = await headers();
     const result = await registerCustomer({

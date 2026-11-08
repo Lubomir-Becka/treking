@@ -15,10 +15,14 @@ const validOrder = {
   country: "SK",
   note: "Zavolať pred doručením",
   paymentMethod: "cod",
+  termsAccepted: true,
 };
 
 test("parses supported order fields without accepting unchecked enum values", () => {
-  assert.deepEqual(parseOrderBody(validOrder), validOrder);
+  const { termsAccepted: _termsAccepted, ...expected } = validOrder;
+  assert.deepEqual(parseOrderBody(validOrder), expected);
+  assert.equal(parseOrderBody({ ...validOrder, termsAccepted: false }), null);
+  assert.equal(parseOrderBody({ ...validOrder, termsAccepted: undefined }), null);
   assert.equal(
     parseOrderBody({ ...validOrder, paymentMethod: "unknown" }),
     null,
@@ -45,5 +49,6 @@ test("leaves business validation to the order use case", () => {
 
 test("allows omitted optional address details", () => {
   const { country: _country, note: _note, ...requiredFields } = validOrder;
-  assert.deepEqual(parseOrderBody(requiredFields), requiredFields);
+  const { termsAccepted: _termsAccepted, ...expected } = requiredFields;
+  assert.deepEqual(parseOrderBody(requiredFields), expected);
 });

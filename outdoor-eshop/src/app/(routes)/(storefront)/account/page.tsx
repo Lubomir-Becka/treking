@@ -22,6 +22,7 @@ export default async function AccountRoute() {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        phone: user.phone,
       }
     : null;
 

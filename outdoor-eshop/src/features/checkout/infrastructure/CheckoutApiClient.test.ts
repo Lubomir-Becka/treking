@@ -46,9 +46,10 @@ test("submits checkout details and preserves order API errors", async () => {
       : Response.json({ error: "Košík je prázdny." }, { status: 409 });
   });
   try {
-    assert.deepEqual(await submitOrder(details), { orderNumber: "VT-123", totalPrice: 42 });
-    assert.deepEqual(JSON.parse(String(calls[0].body)), { ...details, paymentMethod: "cod" });
-    await assert.rejects(submitOrder(details), { message: "Košík je prázdny." });
+    await assert.rejects(submitOrder(details, false), { message: "Pred objednaním potvrďte súhlas s podmienkami." });
+    assert.deepEqual(await submitOrder(details, true), { orderNumber: "VT-123", totalPrice: 42 });
+    assert.deepEqual(JSON.parse(String(calls[0].body)), { ...details, paymentMethod: "cod", termsAccepted: true });
+    await assert.rejects(submitOrder(details, true), { message: "Košík je prázdny." });
   } finally {
     fetchMock.mock.restore();
   }
@@ -57,11 +58,11 @@ test("submits checkout details and preserves order API errors", async () => {
 test("rejects malformed order responses and network failures", async () => {
   const fetchMock = mock.method(globalThis, "fetch", async () => Response.json({ data: {} }));
   try {
-    await assert.rejects(submitOrder(details), OrderOutcomeUnknownError);
+    await assert.rejects(submitOrder(details, true), OrderOutcomeUnknownError);
     fetchMock.mock.mockImplementation(async () => { throw new Error("network"); });
-    await assert.rejects(submitOrder(details), OrderOutcomeUnknownError);
+    await assert.rejects(submitOrder(details, true), OrderOutcomeUnknownError);
     fetchMock.mock.mockImplementation(async () => Response.json({ error: "Server error" }, { status: 500 }));
-    await assert.rejects(submitOrder(details), OrderOutcomeUnknownError);
+    await assert.rejects(submitOrder(details, true), OrderOutcomeUnknownError);
   } finally {
     fetchMock.mock.restore();
   }

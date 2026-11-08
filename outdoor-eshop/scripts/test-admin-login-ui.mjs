@@ -6,6 +6,15 @@ export async function testAdminLoginUi(base, password) {
   try {
     const page = await browser.newPage();
     await page.goto(`${base}/login`);
+    await page.getByRole("button", { name: "Registrácia" }).click();
+    await page.getByLabel("Meno", { exact: true }).fill("Jana");
+    await page.getByLabel("Priezvisko").fill("Nová");
+    await page.getByLabel("E-mail").fill("form@integration.test");
+    await page.getByLabel("Heslo").fill(password);
+    await page.getByLabel("Telefón").fill("abcdefgh");
+    await page.getByRole("button", { name: "Registrovať sa" }).click();
+    await page.getByRole("alert").getByText("Telefón musí obsahovať", { exact: false }).waitFor();
+    await page.getByRole("button", { name: "Prihlásenie", exact: true }).click();
     await page.getByLabel("E-mail").fill("admin@integration.test");
     await page.getByLabel("Heslo").fill(password);
     await page.getByRole("button", { name: "Prihlásiť sa" }).click();

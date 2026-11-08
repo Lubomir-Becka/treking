@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createCheckoutOrder } from "@/features/checkout/composition/server";
 import { resolveActor } from "@/shared/composition/server";
-import { readJsonBody } from "@/shared/server/http/readJsonBody";
+import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
 import { parseOrderBody } from "./parseOrderBody";
+import { validateOrderDetails } from "@/features/checkout/domain/OrderValidation";
+import { isPaymentMethodCode, isShippingMethodCode } from "@/features/checkout/domain/checkout";
 
 async function getUserId(): Promise<number> {
   const actor = await resolveActor();
@@ -24,6 +26,15 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if (isJsonObject(parsedBody.body) && parsedBody.body.termsAccepted !== true) {
+      return NextResponse.json({ error: "Potvrďte súhlas s obchodnými podmienkami." }, { status: 400 });
+    }
+    if (isJsonObject(parsedBody.body) && !isShippingMethodCode(parsedBody.body.shippingMethod)) {
+      return NextResponse.json({ error: "Vyberte platný spôsob dopravy." }, { status: 400 });
+    }
+    if (isJsonObject(parsedBody.body) && !isPaymentMethodCode(parsedBody.body.paymentMethod)) {
+      return NextResponse.json({ error: "Vyberte platný spôsob platby." }, { status: 400 });
+    }
     const body = parseOrderBody(parsedBody.body);
     if (!body) {
       return NextResponse.json(
@@ -31,6 +42,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    const validationError = validateOrderDetails(body);
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
     const result = await createCheckoutOrder({
       ...body,

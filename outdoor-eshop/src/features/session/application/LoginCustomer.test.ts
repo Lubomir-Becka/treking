@@ -39,6 +39,7 @@ const user: UserAccount = {
   email: "user@example.test",
   firstName: "Test",
   lastName: "User",
+  phone: null,
   passwordHash: "hash",
   isActive: true,
   role: "admin",
@@ -69,4 +70,7 @@ test("login rejects inactive accounts and incorrect passwords without creating s
   });
   assert.deepEqual(inactive.calls, []);
   assert.deepEqual(wrongPassword.calls, []);
+  await assert.rejects(wrongPassword.login({ email: user.email, password: "é".repeat(37) }), {
+    message: "INVALID_CREDENTIALS",
+  });
 });

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { AdminCategory } from "@/features/products/domain/CategoryManagement";
-import type { AdminProduct } from "@/features/products/domain/AdminProducts";
+import { validateAdminProduct, type AdminProduct } from "@/features/products/domain/AdminProducts";
 import { ProductInventory } from "./ProductInventory";
 import styles from "./admin.module.css";
 
@@ -131,9 +131,19 @@ export function ProductManagement({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const input = { ...form, categoryId: form.categoryId ? Number(form.categoryId) : null };
+    const validationError = validateAdminProduct(input);
+    if (validationError) {
+      setMessage(validationError);
+      return;
+    }
+    if (input.categoryId !== null && !categories.some((category) => category.id === input.categoryId)) {
+      setMessage("Zvolená kategória neexistuje. Obnovte zoznam kategórií.");
+      return;
+    }
     void mutate(editing === null ? "/api/admin/products" : `/api/admin/products/${editing}`,
       editing === null ? "POST" : "PUT",
-      { ...form, categoryId: form.categoryId ? Number(form.categoryId) : null });
+      input);
   }
 
   function edit(product: AdminProduct) {

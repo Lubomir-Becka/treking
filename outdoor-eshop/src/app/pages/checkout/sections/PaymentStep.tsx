@@ -33,7 +33,7 @@ export function PaymentStep({
     setIsSubmitting(true);
     setOrderError(null);
     try {
-      const order = await submitOrderRequest(details);
+      const order = await submitOrderRequest(details, termsAccepted);
       setOrderCompleted(true);
       try {
         onOrderCreated(order);

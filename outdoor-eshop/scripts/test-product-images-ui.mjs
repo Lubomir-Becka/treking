@@ -24,6 +24,11 @@ export async function testProductImagesUi({ base, cookie, image }) {
     const inventory = page.getByRole("heading", { name: "Farby a varianty: Order Product" }).locator("..");
     const section = inventory.getByRole("heading", { name: /Black/ }).locator("..");
     await section.locator('input[type="file"]').setInputFiles({
+      name: "large.png", mimeType: "image/png", buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+    });
+    await section.getByRole("button", { name: "Pridať obrázok" }).click();
+    await inventory.getByText("Povolené sú obrázky JPEG, PNG a WebP do 5 MB.").waitFor();
+    await section.locator('input[type="file"]').setInputFiles({
       name: "image.png", mimeType: "image/png", buffer: image,
     });
     await section.getByRole("button", { name: "Pridať obrázok" }).click();

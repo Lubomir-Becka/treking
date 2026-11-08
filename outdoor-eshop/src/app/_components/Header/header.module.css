@@ -13,7 +13,6 @@
   backdrop-filter: blur(14px);
 }
 .navigation { display: flex; gap: 26px; margin-right: auto; }
-.mobileNavigation { display: none; }
 .navigationMenu { position: relative; }
 .navigationMenu summary { align-items: center; cursor: pointer; display: flex; list-style: none; padding: 10px 0; }
 .navigationMenu summary::-webkit-details-marker { display: none; }
@@ -159,14 +158,11 @@
   }
 }
 @media (max-width: 480px) {
-  .navigation { display: none; }
-  .mobileNavigation { display: block; position: relative; }
-  .mobileNavigation > summary { cursor: pointer; font-size: 10px; list-style: none; text-transform: uppercase; }
-  .mobileNavigation > summary::-webkit-details-marker { display: none; }
-  .mobileNavigationContent { background: #f8fbf9; border: 1px solid #bec9c3; display: grid; gap: 12px; left: 0; min-width: 210px; padding: 14px; position: absolute; top: calc(100% + 15px); z-index: 30; }
-  .mobileNavigationContent .categoryDropdown { box-shadow: none; position: static; }
+  .brand { display: none; }
+  .navigation { flex: 0 0 auto; gap: 8px; margin-right: 0; }
+  .navigationMenu summary { font-size: 10px; white-space: nowrap; }
   .header { gap: 8px; padding: 0 10px; }
-  .search { width: clamp(82px, 27vw, 120px); padding: 0 7px; }
+  .search { flex: 1; left: auto; min-width: 0; padding: 0 7px; position: static; transform: none; width: auto; }
   .search .icon { height: 16px; width: 16px; }
   .search input { font-size: 8px; letter-spacing: 0; padding-left: 5px; }
   .actions { gap: 9px; }

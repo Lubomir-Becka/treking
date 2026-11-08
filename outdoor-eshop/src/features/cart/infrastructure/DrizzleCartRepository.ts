@@ -158,7 +158,10 @@ export class DrizzleCartRepository implements CartRepository {
       await tx.select({ id: carts.id }).from(carts)
         .where(eq(carts.id, cart.id))
         .for("update");
-      await tx.delete(cartItems).where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)));
+      const deleted = await tx.delete(cartItems)
+        .where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)))
+        .returning({ id: cartItems.id });
+      if (deleted.length === 0) throw new Error("ITEM_NOT_FOUND");
     });
     return loadCart(cart.id);
   }

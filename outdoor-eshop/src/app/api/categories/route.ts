@@ -7,6 +7,10 @@ import { isTargetAudience } from "@/features/products/domain/product";
 
 export async function GET(request: NextRequest) {
   const value = request.nextUrl.searchParams.get("audience");
+  if (request.nextUrl.searchParams.getAll("audience").length > 1 ||
+    (value !== null && !isTargetAudience(value))) {
+    return NextResponse.json({ error: "Neplatné určenie." }, { status: 400 });
+  }
   const audience = isTargetAudience(value) ? value : undefined;
 
   try {

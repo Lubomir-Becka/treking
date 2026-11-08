@@ -43,13 +43,14 @@ export async function fetchShippingOptions(): Promise<ShippingOption[]> {
   });
 }
 
-export async function submitOrder(details: CheckoutDetails): Promise<CreatedOrder> {
+export async function submitOrder(details: CheckoutDetails, termsAccepted: boolean): Promise<CreatedOrder> {
+  if (!termsAccepted) throw new Error("Pred objednaním potvrďte súhlas s podmienkami.");
   let response: Response;
   try {
     response = await fetch("/api/orders", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...details, paymentMethod: "cod" }),
+      body: JSON.stringify({ ...details, paymentMethod: "cod", termsAccepted }),
     });
   } catch {
     throw new OrderOutcomeUnknownError();

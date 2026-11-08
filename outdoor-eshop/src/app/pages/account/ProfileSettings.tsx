@@ -5,10 +5,12 @@ import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { CustomerProfile } from "@/features/customer/domain/CustomerAccountRepository";
 import { updateProfile } from "@/features/customer/composition/client";
+import { isValidPassword, validateOptionalPhone, validateProfileNames } from "@/shared/domain/contactValidation";
+import { isValidCustomerEmail } from "@/shared/domain/email";
 import styles from "./account.module.css";
 
 type Props = {
-  user: Pick<CustomerProfile, "email" | "firstName" | "lastName">;
+  user: Pick<CustomerProfile, "email" | "firstName" | "lastName" | "phone">;
 };
 
 export function ProfileSettings({ user }: Props) {
@@ -16,6 +18,7 @@ export function ProfileSettings({ user }: Props) {
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email, setEmail] = useState(user.email);
+  const [phone, setPhone] = useState(user.phone ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -28,8 +31,22 @@ export function ProfileSettings({ user }: Props) {
     setError(null);
     setSaved(false);
 
-    if (emailChanged && !currentPassword) {
-      setError("Na zmenu e-mailu zadajte svoje aktuálne heslo.");
+    const nameError = validateProfileNames({ firstName, lastName });
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
+    if (!isValidCustomerEmail(email)) {
+      setError("Zadajte platnú e-mailovú adresu (najviac 100 znakov).");
+      return;
+    }
+    const phoneError = validateOptionalPhone(phone);
+    if (phoneError) {
+      setError(phoneError);
+      return;
+    }
+    if (emailChanged && !isValidPassword(currentPassword)) {
+      setError("Na zmenu e-mailu zadajte platné aktuálne heslo.");
       return;
     }
 
@@ -38,12 +55,14 @@ export function ProfileSettings({ user }: Props) {
       const data = await updateProfile({
         firstName,
         lastName,
+        phone,
         ...(emailChanged ? { email: email.trim(), currentPassword } : {}),
       });
 
       setFirstName(data.firstName);
       setLastName(data.lastName);
       setEmail(data.email);
+      setPhone(data.phone ?? "");
       setCurrentPassword("");
       setSaved(true);
       router.refresh();
@@ -59,7 +78,7 @@ export function ProfileSettings({ user }: Props) {
   }
 
   return (
-    <article className={styles.dashboardCard}>
+    <article className={styles.dashboardCard} id="profile">
       <span className={styles.kicker}>Osobné údaje</span>
       <h2>Nastavenia profilu</h2>
       <form className={styles.profileForm} onSubmit={saveProfile}>
@@ -94,6 +113,16 @@ export function ProfileSettings({ user }: Props) {
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
+        <label>
+          Telefón (voliteľné)
+          <input
+            autoComplete="tel"
+            maxLength={20}
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+          />
+        </label>
         {emailChanged && (
           <label>
             Aktuálne heslo
@@ -113,9 +142,11 @@ export function ProfileSettings({ user }: Props) {
         )}
         {error && <p className={styles.profileError} role="alert">{error}</p>}
         {saved && <p className={styles.profileSuccess} role="status">Údaje profilu boli uložené.</p>}
-        <button className={styles.primaryButton} disabled={isSaving} type="submit">
-          {isSaving ? "Ukladám…" : "Uložiť zmeny"}
-        </button>
+        <div className={styles.profileActions}>
+          <button className={styles.profileSubmit} disabled={isSaving} type="submit">
+            {isSaving ? "Ukladám…" : "Uložiť zmeny"}
+          </button>
+        </div>
       </form>
     </article>
   );

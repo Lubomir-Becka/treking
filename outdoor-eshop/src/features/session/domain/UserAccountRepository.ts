@@ -5,6 +5,7 @@ export type UserAccount = {
   email: string;
   firstName: string;
   lastName: string;
+  phone: string | null;
   passwordHash: string;
   isActive: boolean;
   role: UserRole;
@@ -22,6 +23,7 @@ export type UpdateUserProfileInput = {
   email?: string;
   firstName: string;
   lastName: string;
+  phone?: string | null;
 };
 
 export interface UserAccountRepository {

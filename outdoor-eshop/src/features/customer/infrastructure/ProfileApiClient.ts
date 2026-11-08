@@ -1,7 +1,8 @@
-type Profile = { firstName: string; lastName: string; email: string };
+type Profile = { firstName: string; lastName: string; email: string; phone: string | null };
 type UpdateProfile = {
   firstName: string;
   lastName: string;
+  phone?: string;
   email?: string;
   currentPassword?: string;
 };
@@ -25,7 +26,8 @@ export async function updateProfile(input: UpdateProfile): Promise<Profile> {
     !("data" in payload) || typeof payload.data !== "object" || payload.data === null ||
     !("firstName" in payload.data) || typeof payload.data.firstName !== "string" ||
     !("lastName" in payload.data) || typeof payload.data.lastName !== "string" ||
-    !("email" in payload.data) || typeof payload.data.email !== "string"
+    !("email" in payload.data) || typeof payload.data.email !== "string" ||
+    !("phone" in payload.data) || !(typeof payload.data.phone === "string" || payload.data.phone === null)
   ) {
     throw new Error("Profil sa nepodarilo aktualizovať.");
   }
@@ -33,5 +35,6 @@ export async function updateProfile(input: UpdateProfile): Promise<Profile> {
     firstName: payload.data.firstName,
     lastName: payload.data.lastName,
     email: payload.data.email,
+    phone: payload.data.phone,
   };
 }

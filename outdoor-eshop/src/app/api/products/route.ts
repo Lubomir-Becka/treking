@@ -3,6 +3,7 @@ import { searchProducts } from "@/features/products/composition/server";
 import { normalizeProductLimit } from "@/features/products/application/SearchProducts";
 import { isTargetAudience } from "@/features/products/domain/product";
 import type { CatalogProductDto } from "@/features/products/contracts/products";
+import { isValidCatalogQuery } from "@/features/products/domain/catalogSearch";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -14,10 +15,16 @@ export async function GET(request: NextRequest) {
   const rawColorIds = searchParams.getAll("colorId");
   const colorIds = rawColorIds.map(Number);
   if (
+    ["q", "category", "audience", "limit"].some((key) => searchParams.getAll(key).length > 1) ||
+    (query !== undefined && !isValidCatalogQuery(query)) ||
+    (categorySlug !== undefined && (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug) || categorySlug.length > 120)) ||
+    (rawAudience !== null && !isTargetAudience(rawAudience)) ||
+    (rawLimit !== null && (!/^[1-9]\d*$/.test(rawLimit) || Number(rawLimit) > 100)) ||
     colorIds.length > 100 ||
-    colorIds.some((id) => !Number.isSafeInteger(id) || id < 1)
+    rawColorIds.some((id) => !/^[1-9]\d*$/.test(id)) ||
+    colorIds.some((id) => !Number.isSafeInteger(id) || id < 1 || id > 2_147_483_647)
   ) {
-    return NextResponse.json({ error: "Neplatné identifikátory farieb." }, { status: 400 });
+    return NextResponse.json({ error: "Neplatné parametre katalógu." }, { status: 400 });
   }
   const requestedLimit = rawLimit === null ? undefined : Number(rawLimit);
   const limit = normalizeProductLimit(

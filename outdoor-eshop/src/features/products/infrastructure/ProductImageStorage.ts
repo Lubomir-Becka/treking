@@ -2,18 +2,17 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { isValidProductImage } from "../domain/ProductImage";
+export { MAX_IMAGE_BYTES } from "../domain/ProductImage";
 
 const imageDirectory = path.resolve(/*turbopackIgnore: true*/ process.env.PRODUCT_IMAGE_DIRECTORY ?? "./uploads/products");
 const imageNamePattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/;
 const publicPrefix = "/api/product-images/";
 
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-
 export class InvalidProductImage extends Error {}
 
 export async function saveProductImage(file: File): Promise<string> {
-  if (file.size === 0 || file.size > MAX_IMAGE_BYTES ||
-    !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+  if (!isValidProductImage(file)) {
     throw new InvalidProductImage("Povolené sú obrázky JPEG, PNG a WebP do 5 MB.");
   }
   const input = Buffer.from(await file.arrayBuffer());

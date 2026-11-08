@@ -7,7 +7,9 @@ import styles from "./header.module.css";
 export function Header() {
   return (
     <header className={styles.header}>
-      <Logo />
+      <div className={styles.brand}>
+        <Logo />
+      </div>
       <HeaderNavigation />
       <HeaderSearch />
       <HeaderActions />

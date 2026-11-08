@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authenticate } from "@/features/session/composition/client";
+import { isValidPassword, validateRegistration } from "@/shared/domain/contactValidation";
+import { isValidCustomerEmail } from "@/shared/domain/email";
 import styles from "./auth.module.css";
 
 type AuthFormProps = {
@@ -26,6 +28,22 @@ export function AuthForm({ mode, nextPath = "/account", loginOnly = false }: Aut
     const payload = Object.fromEntries(form.entries());
 
     try {
+      if (isLogin && (!isValidCustomerEmail(String(payload.email ?? "")) ||
+        !isValidPassword(String(payload.password ?? "")))) {
+        setError("Skontrolujte e-mail a heslo (8 znakov až 72 bajtov).");
+        return;
+      }
+      const registrationError = !isLogin ? validateRegistration({
+        firstName: String(payload.firstName ?? ""),
+        lastName: String(payload.lastName ?? ""),
+        email: String(payload.email ?? ""),
+        password: String(payload.password ?? ""),
+        phone: String(payload.phone ?? ""),
+      }) : null;
+      if (registrationError) {
+        setError(registrationError);
+        return;
+      }
       const role = await authenticate(loginOnly ? "admin-login" : isLogin ? "login" : "register", payload);
       if (role === "customer") {
         window.dispatchEvent(new CustomEvent("vertex-cart-updated"));
@@ -80,17 +98,17 @@ export function AuthForm({ mode, nextPath = "/account", loginOnly = false }: Aut
           <>
             <label>
               Meno
-              <input name="firstName" required autoComplete="given-name" />
+              <input name="firstName" required maxLength={50} autoComplete="given-name" />
             </label>
             <label>
               Priezvisko
-              <input name="lastName" required autoComplete="family-name" />
+              <input name="lastName" required maxLength={50} autoComplete="family-name" />
             </label>
           </>
         )}
         <label>
           E-mail
-          <input name="email" type="email" required autoComplete="email" />
+          <input name="email" type="email" required maxLength={100} autoComplete="email" />
         </label>
         <label>
           Heslo
@@ -105,7 +123,7 @@ export function AuthForm({ mode, nextPath = "/account", loginOnly = false }: Aut
         {!isLogin && (
           <label>
             Telefón (voliteľné)
-            <input name="phone" type="tel" autoComplete="tel" />
+            <input name="phone" type="tel" maxLength={20} autoComplete="tel" />
           </label>
         )}
         {error && <p role="alert">{error}</p>}

@@ -8,6 +8,7 @@ import {
   searchProducts,
 } from "@/features/products/composition/server";
 import { isTargetAudience } from "@/features/products/domain/product";
+import { isValidCatalogQuery } from "@/features/products/domain/catalogSearch";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -19,6 +20,10 @@ export const dynamic = "force-dynamic";
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const filters = await searchParams;
+  if (filters.q !== undefined && (typeof filters.q !== "string" || !isValidCatalogQuery(filters.q))) {
+    notFound();
+  }
+  if (filters.audience !== undefined && !isTargetAudience(filters.audience)) notFound();
   const category = await getCategory(slug);
   if (!category) notFound();
   const audience = isTargetAudience(filters.audience) ? filters.audience : undefined;

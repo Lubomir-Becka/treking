@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { saveAdminProduct, setProductActive } from "@/features/products/composition/server";
-import { parseAdminProduct } from "@/features/products/domain/AdminProducts";
+import { parseAdminProduct, validateAdminProduct } from "@/features/products/domain/AdminProducts";
 import { isCategoryId } from "@/features/products/domain/CategoryManagement";
 import { adminAccessError } from "@/shared/server/http/adminAccess";
 import { isJsonObject, readJsonBody } from "@/shared/server/http/readJsonBody";
@@ -22,7 +22,7 @@ async function change(request: Request, context: Context, operation: "update" | 
     let found: boolean;
     if (operation === "update") {
       const input = parseAdminProduct(body.body);
-      if (!input) return NextResponse.json({ error: "Skontrolujte údaje produktu." }, { status: 400 });
+      if (!input) return NextResponse.json({ error: validateAdminProduct(body.body) }, { status: 400 });
       found = await saveAdminProduct(input, id);
     } else {
       if (!isJsonObject(body.body) || typeof body.body.active !== "boolean") {
