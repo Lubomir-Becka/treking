@@ -26,7 +26,7 @@ export function AuthForm({ mode, nextPath = "/account", loginOnly = false }: Aut
     const payload = Object.fromEntries(form.entries());
 
     try {
-      const role = await authenticate(isLogin ? "login" : "register", payload);
+      const role = await authenticate(loginOnly ? "admin-login" : isLogin ? "login" : "register", payload);
       if (role === "customer") {
         window.dispatchEvent(new CustomEvent("vertex-cart-updated"));
       }

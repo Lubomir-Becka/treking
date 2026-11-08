@@ -1,6 +1,7 @@
 import type { PasswordServicePort } from "../domain/PasswordServicePort";
 import type { RateLimiterPort } from "../domain/RateLimiterPort";
 import type { UserAccountRepository } from "../domain/UserAccountRepository";
+import type { UserRole } from "../domain/UserRole";
 import { createCustomerSession } from "./CreateCustomerSession";
 
 export function createLoginCustomer(
@@ -8,6 +9,7 @@ export function createLoginCustomer(
   passwords: PasswordServicePort,
   rateLimiter: RateLimiterPort,
   createSession: ReturnType<typeof createCustomerSession>,
+  requiredRole: UserRole,
 ) {
   return async function login(input: {
     email: string;
@@ -21,7 +23,7 @@ export function createLoginCustomer(
       ? await passwords.verify(input.password, user.passwordHash)
       : false;
 
-    if (!user || !valid || !user.isActive) {
+    if (!user || !valid || !user.isActive || user.role !== requiredRole) {
       throw new Error("INVALID_CREDENTIALS");
     }
 

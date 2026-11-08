@@ -12,6 +12,7 @@ export const {
   ensureGuestActor,
   findCustomerById,
   loginCustomer,
+  loginAdmin,
   registerCustomer,
   resolveActor,
   revokeSession,

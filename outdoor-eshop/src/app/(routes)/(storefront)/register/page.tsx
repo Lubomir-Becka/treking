@@ -10,7 +10,7 @@ export default async function RegisterPage({
   const params = await searchParams;
   const nextPath = getSafeNextPath(params.next);
   if (isAdminDestination(nextPath)) {
-    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+    redirect("/admin/login");
   }
   return <AuthForm mode="register" nextPath={nextPath} />;
 }

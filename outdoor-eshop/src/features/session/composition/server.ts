@@ -53,6 +53,14 @@ export function createSessionComposition(guestCartMerger: GuestCartMergePort) {
     passwords,
     rateLimiter,
     createCustomerSession,
+    "customer",
+  );
+  const loginAdmin = createLoginCustomer(
+    accounts,
+    passwords,
+    rateLimiter,
+    createCustomerSession,
+    "admin",
   );
   const updateCustomerProfile = createUpdateCustomerProfile(accounts, passwords);
 
@@ -61,9 +69,11 @@ export function createSessionComposition(guestCartMerger: GuestCartMergePort) {
     ensureGuestActor,
     findCustomerById: (id: number) => accounts.findById(id),
     loginCustomer,
+    loginAdmin,
     registerCustomer,
     resolveActor,
     revokeSession,
     updateCustomerProfile,
   };
 }
+export { listAdminCustomers, deleteAdminCustomer, setAdminCustomerActive } from "../infrastructure/AdminCustomerManagement";

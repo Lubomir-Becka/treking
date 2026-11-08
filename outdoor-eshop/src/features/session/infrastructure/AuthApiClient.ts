@@ -1,10 +1,11 @@
 import { isUserRole, type UserRole } from "../domain/UserRole";
 
 export async function authenticate(
-  mode: "login" | "register",
+  mode: "login" | "register" | "admin-login",
   payload: Record<string, FormDataEntryValue>,
 ): Promise<UserRole> {
-  const response = await fetch(`/api/auth/${mode}`, {
+  const path = mode === "admin-login" ? "/api/admin/auth/login" : `/api/auth/${mode}`;
+  const response = await fetch(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
@@ -22,6 +23,10 @@ export async function authenticate(
     !("data" in result) || typeof result.data !== "object" || result.data === null ||
     !("role" in result.data) || !isUserRole(result.data.role)
   ) {
+    throw new Error("Odpoveď prihlásenia nemá platný formát.");
+  }
+  const expectedRole = mode === "admin-login" ? "admin" : "customer";
+  if (result.data.role !== expectedRole) {
     throw new Error("Odpoveď prihlásenia nemá platný formát.");
   }
   return result.data.role;
